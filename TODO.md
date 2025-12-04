@@ -9,15 +9,15 @@
 
 ## phase 2: single-player simulation
 
-- [ ] define GameState, Player, Projectile structs
-- [ ] terrain generation (random jagged line)
-- [ ] cannon aiming (angle adjustment with keys)
-- [ ] power adjustment
-- [ ] fire projectile
-- [ ] projectile physics (gravity, movement)
-- [ ] terrain collision detection
-- [ ] player hit detection
-- [ ] turn switching after shot resolves
+- [x] define GameState, Player, Projectile structs
+- [x] terrain generation (fixed pattern for now)
+- [x] cannon aiming (angle adjustment with keys)
+- [x] power adjustment
+- [x] fire projectile
+- [x] projectile physics (gravity, movement)
+- [x] terrain collision detection
+- [x] player hit detection
+- [x] turn switching after shot resolves
 
 ## phase 3: rendering
 
