@@ -21,14 +21,14 @@
 
 ## phase 3: rendering
 
-- [ ] draw terrain as connected line segments
-- [ ] draw players as geometric shapes
-- [ ] draw cannon angle indicator
-- [ ] draw power meter
-- [ ] draw projectile with trail (last N positions)
-- [ ] implement bloom shader (blur.fs)
-- [ ] render-to-texture pipeline for glow effect
-- [ ] explosion effect (expanding circle)
+- [x] draw terrain as connected line segments
+- [x] draw players as geometric shapes
+- [x] draw cannon angle indicator
+- [x] draw power meter
+- [x] draw projectile with trail (last N positions)
+- [x] implement bloom shader (blur.fs)
+- [x] render-to-texture pipeline for glow effect
+- [x] explosion effect (expanding circle)
 
 ## phase 4: local two-player
 
