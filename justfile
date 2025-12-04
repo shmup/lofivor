@@ -34,3 +34,6 @@ clean:
 # check for compile errors without building
 check:
     zig build --summary all 2>&1 | head -50
+
+test:
+    zig build test
