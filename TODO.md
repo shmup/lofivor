@@ -2,10 +2,10 @@
 
 ## phase 1: foundation
 
-- [ ] set up build.zig with raylib-zig dependency
-- [ ] create fixed-point math module (Fixed struct, add/sub/mul/div)
-- [ ] create trig lookup tables (sin/cos at comptime)
-- [ ] basic window opens with raylib
+- [x] set up build.zig with raylib-zig dependency
+- [x] create fixed-point math module (Fixed struct, add/sub/mul/div)
+- [x] create trig lookup tables (sin/cos at comptime)
+- [x] basic window opens with raylib
 
 ## phase 2: single-player simulation
 
