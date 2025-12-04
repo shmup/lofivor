@@ -1,6 +1,10 @@
 # use bash
 set shell := ["bash", "-c"]
 
+default:
+  @just build
+  @just test
+
 build:
     zig build
 
