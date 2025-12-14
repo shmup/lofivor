@@ -4,14 +4,14 @@ survivor-like optimized for weak hardware. finding the performance ceiling first
 
 ## phase 1: sandbox stress test
 
-- [ ] create sandbox.zig (separate from existing game code)
-- [ ] entity struct (x, y, vx, vy, color)
-- [ ] flat array storage for entities
-- [ ] spawn entities at random screen edges
-- [ ] update loop: move toward center, respawn on arrival
-- [ ] render: filled circles (4px radius, cyan)
-- [ ] metrics overlay (entity count, frame time, update time, render time)
-- [ ] controls: +/- 100, shift +/- 1000, space pause, r reset
+- [x] create sandbox.zig (separate from existing game code)
+- [x] entity struct (x, y, vx, vy, color)
+- [x] flat array storage for entities
+- [x] spawn entities at random screen edges
+- [x] update loop: move toward center, respawn on arrival
+- [x] render: filled circles (4px radius, cyan)
+- [x] metrics overlay (entity count, frame time, update time, render time)
+- [x] controls: +/- 100, shift +/- 1000, space pause, r reset
 
 ## phase 2: find the ceiling
 
