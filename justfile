@@ -1,4 +1,4 @@
-# use bash
+set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
 set shell := ["bash", "-c"]
 
 default:
