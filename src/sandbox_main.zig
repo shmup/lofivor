@@ -95,6 +95,10 @@ fn drawMetrics(entities: *const sandbox.Entities, update_us: i64, render_us: i64
     var y: i32 = 10;
     const line_height: i32 = 20;
 
+    // dark background for readability
+    const bg_height: i32 = if (paused) 130 else 100;
+    rl.drawRectangle(5, 5, 180, bg_height, rl.Color{ .r = 0, .g = 0, .b = 0, .a = 200 });
+
     // entity count
     const count_text = std.fmt.bufPrintZ(&buf, "entities: {d}", .{entities.count}) catch "?";
     rl.drawText(count_text, 10, y, 16, rl.Color.white);
@@ -126,5 +130,6 @@ fn drawMetrics(entities: *const sandbox.Entities, update_us: i64, render_us: i64
 
     // controls help (bottom)
     const help_y: i32 = @intCast(SCREEN_HEIGHT - 30);
+    rl.drawRectangle(5, help_y - 5, 370, 24, rl.Color{ .r = 0, .g = 0, .b = 0, .a = 200 });
     rl.drawText("+/-: 100  shift+/-: 1000  space: pause  r: reset", 10, help_y, 14, rl.Color.gray);
 }
