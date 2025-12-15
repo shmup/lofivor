@@ -4,6 +4,7 @@
 const std = @import("std");
 const rl = @import("raylib");
 const sandbox = @import("sandbox.zig");
+const ui = @import("ui.zig");
 
 const SCREEN_WIDTH = sandbox.SCREEN_WIDTH;
 const SCREEN_HEIGHT = sandbox.SCREEN_HEIGHT;
@@ -205,7 +206,7 @@ pub fn main() !void {
         rl.gl.rlSetTexture(0);
 
         // metrics overlay
-        drawMetrics(&entities, update_time_us, render_time_us, paused, ui_font);
+        ui.drawMetrics(&entities, update_time_us, render_time_us, paused, ui_font);
 
         rl.endDrawing();
 
@@ -245,62 +246,4 @@ fn handleInput(entities: *sandbox.Entities, rng: *std.Random, paused: *bool) voi
     if (rl.isKeyPressed(.space)) {
         paused.* = !paused.*;
     }
-}
-
-fn drawMetrics(entities: *const sandbox.Entities, update_us: i64, render_us: i64, paused: bool, font: rl.Font) void {
-    var buf: [256]u8 = undefined;
-    var y: f32 = 10;
-    const line_height: f32 = 20;
-    const font_size: f32 = 14;
-
-    // dark background for readability
-    const bg_height: i32 = if (paused) 130 else 100;
-    rl.drawRectangle(5, 5, 180, bg_height, rl.Color{ .r = 0, .g = 0, .b = 0, .a = 200 });
-
-    // entity count
-    const count_text = std.fmt.bufPrintZ(&buf, "entities: {d}", .{entities.count}) catch "?";
-    rl.drawTextEx(font, count_text, .{ .x = 10, .y = y }, font_size, 0, rl.Color.white);
-    y += line_height;
-
-    // frame time
-    const frame_ms = rl.getFrameTime() * 1000.0;
-    const frame_text = std.fmt.bufPrintZ(&buf, "frame:    {d:.1}ms", .{frame_ms}) catch "?";
-    rl.drawTextEx(font, frame_text, .{ .x = 10, .y = y }, font_size, 0, rl.Color.white);
-    y += line_height;
-
-    // update time
-    const update_ms = @as(f32, @floatFromInt(update_us)) / 1000.0;
-    const update_text = std.fmt.bufPrintZ(&buf, "update:   {d:.1}ms", .{update_ms}) catch "?";
-    rl.drawTextEx(font, update_text, .{ .x = 10, .y = y }, font_size, 0, rl.Color.white);
-    y += line_height;
-
-    // render time
-    const render_ms = @as(f32, @floatFromInt(render_us)) / 1000.0;
-    const render_text = std.fmt.bufPrintZ(&buf, "render:   {d:.1}ms", .{render_ms}) catch "?";
-    rl.drawTextEx(font, render_text, .{ .x = 10, .y = y }, font_size, 0, rl.Color.white);
-    y += line_height;
-
-    // paused indicator
-    if (paused) {
-        y += line_height;
-        rl.drawTextEx(font, "PAUSED", .{ .x = 10, .y = y }, font_size, 0, rl.Color.yellow);
-    }
-
-    // controls legend (top left, beneath debug info)
-    const ctrl_line_height: f32 = 18;
-    const ctrl_font_size: f32 = 12;
-    const ctrl_box_height: i32 = @intFromFloat(ctrl_line_height * 5 + 16); // 5 lines + padding
-    const ctrl_box_y: i32 = 5 + bg_height + 5; // beneath debug box with gap
-    rl.drawRectangle(5, ctrl_box_y, 175, ctrl_box_height, rl.Color{ .r = 0, .g = 0, .b = 0, .a = 200 });
-
-    var ctrl_y: f32 = @floatFromInt(ctrl_box_y + 8);
-    rl.drawTextEx(font, "+/-: add/remove 100", .{ .x = 10, .y = ctrl_y }, ctrl_font_size, 0, rl.Color.gray);
-    ctrl_y += ctrl_line_height;
-    rl.drawTextEx(font, "shift +/-: 1000", .{ .x = 10, .y = ctrl_y }, ctrl_font_size, 0, rl.Color.gray);
-    ctrl_y += ctrl_line_height;
-    rl.drawTextEx(font, "ctrl+shift +/-: 10000", .{ .x = 10, .y = ctrl_y }, ctrl_font_size, 0, rl.Color.gray);
-    ctrl_y += ctrl_line_height;
-    rl.drawTextEx(font, "space: pause", .{ .x = 10, .y = ctrl_y }, ctrl_font_size, 0, rl.Color.gray);
-    ctrl_y += ctrl_line_height;
-    rl.drawTextEx(font, "r: reset", .{ .x = 10, .y = ctrl_y }, ctrl_font_size, 0, rl.Color.gray);
 }
