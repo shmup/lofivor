@@ -112,7 +112,7 @@ const len = try std.posix.recvfrom(sock, &buf, 0, &src_addr, &src_len);
 
 ```zig
 .{
-    .name = "lockstep",
+    .name = "lofivor",
     .version = "0.0.1",
     .dependencies = .{
         .raylib_zig = .{
@@ -138,7 +138,7 @@ pub fn build(b: *std.Build) void {
     });
 
     const exe = b.addExecutable(.{
-        .name = "lockstep",
+        .name = "lofivor",
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/main.zig"),
             .target = target,
@@ -164,7 +164,7 @@ pub fn build(b: *std.Build) void {
 const rl = @import("raylib");
 
 pub fn main() !void {
-    rl.initWindow(800, 600, "lockstep");
+    rl.initWindow(800, 600, "lofivor");
     defer rl.closeWindow();
     rl.setTargetFPS(60);
 

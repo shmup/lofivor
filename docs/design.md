@@ -1,8 +1,8 @@
-# lockstep artillery game - technical design
+# lofivor artillery game - technical design
 
-a deterministic lockstep networked artillery game in zig with vector-style glowing line visuals.
+a deterministic lofivor networked artillery game in zig with vector-style glowing line visuals.
 
-## why deterministic lockstep?
+## why deterministic lofivor?
 
 bandwidth scales with input size, not object count. send "fire at angle 45, power 80" instead of syncing projectile positions every frame. replay files are just input logs. certain cheats become impossible since all clients must agree on simulation.
 
@@ -284,7 +284,7 @@ no physics libraries, no other third-party code in simulation.
 ## file structure
 
 ```
-lockstep/
+lofivor/
 ├── build.zig
 ├── build.zig.zon
 ├── src/

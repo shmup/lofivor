@@ -1,5 +1,5 @@
 .{
-    .name = .lockstep,
+    .name = .lofivor,
     .version = "0.0.1",
     .fingerprint = 0x9de74c19d031cdc9,
     .dependencies = .{
