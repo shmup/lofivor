@@ -85,15 +85,14 @@ const BenchmarkLogger = struct {
 
         if (!crossed_threshold and !big_jump and !heartbeat_due) return;
 
-        // determine note
-        var note: []const u8 = "";
-        if (crossed_threshold and now_above) {
-            note = "[!60fps]";
-        } else if (crossed_threshold and !now_above) {
-            note = "[+60fps]";
-        } else if (big_jump) {
-            note = "[jump]";
-        }
+        const fps = if (frame_ms > 0) 1000.0 / frame_ms else 0;
+
+        // determine note - show ! when below target fps
+        var note_buf: [16]u8 = undefined;
+        const note = if (now_above)
+            std.fmt.bufPrint(&note_buf, "[!{d:.0}fps]", .{fps}) catch ""
+        else
+            std.fmt.bufPrint(&note_buf, "[{d:.0}fps]", .{fps}) catch "";
 
         var buf: [256]u8 = undefined;
         const line = std.fmt.bufPrint(&buf, "[{d:.1}s] entities={d} frame={d:.1}ms update={d:.1}ms render={d:.1}ms {s}\n", .{
