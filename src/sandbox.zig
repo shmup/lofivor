@@ -104,12 +104,18 @@ pub fn spawnAtEdge(rng: *std.Random) Entity {
     const vx = (dx / dist) * ENTITY_SPEED;
     const vy = (dy / dist) * ENTITY_SPEED;
 
+    // random RGB color
+    const r = rng.int(u8);
+    const g = rng.int(u8);
+    const b = rng.int(u8);
+    const color: u32 = (@as(u32, r) << 16) | (@as(u32, g) << 8) | @as(u32, b);
+
     return .{
         .x = x,
         .y = y,
         .vx = vx,
         .vy = vy,
-        .color = 0x00FFFF, // cyan
+        .color = color,
     };
 }
 

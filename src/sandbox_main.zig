@@ -117,7 +117,7 @@ fn createCircleTexture() ?rl.Texture2D {
         @divTrunc(TEXTURE_SIZE, 2),
         @divTrunc(TEXTURE_SIZE, 2),
         ENTITY_RADIUS,
-        CYAN,
+        rl.Color{ .r = 255, .g = 255, .b = 255, .a = 255 }, // white, tinted per-entity
     );
     rl.endTextureMode();
 
@@ -183,9 +183,14 @@ pub fn main() !void {
 
         rl.gl.rlSetTexture(circle_texture.id);
         rl.gl.rlBegin(rl.gl.rl_quads);
-        rl.gl.rlColor4ub(255, 255, 255, 255); // white tint
 
         for (entities.items[0..entities.count]) |entity| {
+            // extract RGB from entity color (0xRRGGBB)
+            const r: u8 = @truncate(entity.color >> 16);
+            const g: u8 = @truncate(entity.color >> 8);
+            const b: u8 = @truncate(entity.color);
+            rl.gl.rlColor4ub(r, g, b, 255);
+
             const x1 = entity.x - half;
             const y1 = entity.y - half;
             const x2 = entity.x + half;

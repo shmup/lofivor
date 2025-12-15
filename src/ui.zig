@@ -8,8 +8,8 @@ const sandbox = @import("sandbox.zig");
 // config - tweak these
 // =============================================================================
 
-pub const font_size: f32 = 14;
-pub const small_font_size: f32 = 12;
+pub const font_size: f32 = 16;
+pub const small_font_size: f32 = 16;
 pub const line_height: f32 = 20;
 pub const small_line_height: f32 = 18;
 pub const padding: f32 = 10;
