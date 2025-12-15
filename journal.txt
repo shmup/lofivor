@@ -83,6 +83,31 @@ vs 100k drawTexture calls with their overhead.
 
 ---
 
+hardware comparison: i5-6500T (integrated graphics)
+---------------------------------------------------
+system: Intel i5-6500T with Intel HD Graphics 530
+baseline version: 0.3.0 (quad batching optimized)
+
+benchmark.log results:
+- 30k entities: 16.7ms mostly, occasional spikes to 20-27ms
+- 40k entities: 16.7ms stable
+- 50k entities: 16.7ms mostly, breaks to 20ms occasionally
+- 60k entities: 47ms spike, settles ~20ms (breaks 60fps)
+- 100k entities: ~31ms frame
+- 200k entities: ~57ms frame (render=48.8ms, update=8.0ms)
+
+comparison to AMD Radeon (optimization 2 results):
+- AMD Radeon: 60fps stable @ ~100k entities
+- i5-6500T HD 530: 60fps stable @ ~50k entities
+- ~2x difference due to integrated vs discrete GPU
+
+notes: update loop scales well on both (update_ms < 10ms even at 200k).
+bottleneck is purely GPU-bound. integrated graphics has fewer shader
+units and less memory bandwidth, explaining the ~2x entity ceiling
+difference.
+
+---
+
 optimization 3: [pending]
 -------------------------
 technique:
