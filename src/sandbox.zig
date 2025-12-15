@@ -21,12 +21,14 @@ pub const Entity = struct {
 pub const MAX_ENTITIES: usize = 1_000_000;
 
 pub const Entities = struct {
-    items: [MAX_ENTITIES]Entity,
+    items: []Entity,
     count: usize,
+
+    var backing: [MAX_ENTITIES]Entity = undefined;
 
     pub fn init() Entities {
         return .{
-            .items = undefined,
+            .items = &backing,
             .count = 0,
         };
     }
