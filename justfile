@@ -41,3 +41,20 @@ check:
 
 test:
     zig build test
+
+# auto-benchmark (ramps entities until performance degrades, works on linux/windows)
+bench:
+    zig build -Doptimize=ReleaseFast run -- --bench
+    cat benchmark.log
+
+# software-rendered benchmark (for CI/headless servers)
+[linux]
+bench-sw:
+    zig build -Doptimize=ReleaseFast
+    xvfb-run -a ./zig-out/bin/sandbox --bench
+    cat benchmark.log
+
+[windows]
+bench-sw:
+    @echo "bench-sw: windows doesn't have xvfb equivalent"
+    @echo "use 'just bench' if you have a GPU, or run in WSL/linux CI"

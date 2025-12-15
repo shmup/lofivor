@@ -23,6 +23,12 @@ const THRESHOLD_MARGIN: f32 = 2.0; // hysteresis margin to avoid bounce
 const JUMP_THRESHOLD_MS: f32 = 5.0; // log if frame time jumps by this much
 const HEARTBEAT_INTERVAL: f32 = 10.0; // seconds between periodic logs
 
+// auto-benchmark settings
+const BENCH_RAMP_INTERVAL: f32 = 2.0; // seconds between entity ramps
+const BENCH_RAMP_AMOUNT: usize = 10_000; // entities added per ramp
+const BENCH_EXIT_THRESHOLD_MS: f32 = 25.0; // exit when frame time exceeds this
+const BENCH_EXIT_SUSTAIN: f32 = 1.0; // must stay above threshold for this long
+
 const BenchmarkLogger = struct {
     file: ?std.fs.File,
     last_logged_frame_ms: f32,
@@ -125,6 +131,16 @@ fn createCircleTexture() ?rl.Texture2D {
 }
 
 pub fn main() !void {
+    // parse args
+    var bench_mode = false;
+    var args = std.process.args();
+    _ = args.skip(); // skip program name
+    while (args.next()) |arg| {
+        if (std.mem.eql(u8, arg, "--bench")) {
+            bench_mode = true;
+        }
+    }
+
     rl.initWindow(@intCast(SCREEN_WIDTH), @intCast(SCREEN_HEIGHT), "lofivor sandbox");
     defer rl.closeWindow();
     rl.setTargetFPS(60);
@@ -157,12 +173,51 @@ pub fn main() !void {
     var render_time_us: i64 = 0;
     var elapsed: f32 = 0;
 
+    // auto-benchmark state
+    var last_ramp_time: f32 = 0;
+    var above_threshold_time: f32 = 0;
+    var smoothed_frame_ms: f32 = 16.7;
+
+    if (bench_mode) {
+        std.debug.print("auto-benchmark mode: ramping to failure or 1M entities\n", .{});
+    }
+
     while (!rl.windowShouldClose()) {
         const dt = rl.getFrameTime();
         elapsed += dt;
+        const frame_ms = dt * 1000.0;
 
-        // controls
-        handleInput(&entities, &rng, &paused);
+        // smooth frame time for stable exit detection
+        smoothed_frame_ms = smoothed_frame_ms * 0.9 + frame_ms * 0.1;
+
+        // auto-benchmark logic
+        if (bench_mode) {
+            // check exit condition: sustained poor performance
+            if (smoothed_frame_ms > BENCH_EXIT_THRESHOLD_MS) {
+                above_threshold_time += dt;
+                if (above_threshold_time >= BENCH_EXIT_SUSTAIN) {
+                    std.debug.print("benchmark complete: {d} entities @ {d:.1}ms avg frame\n", .{ entities.count, smoothed_frame_ms });
+                    break;
+                }
+            } else {
+                above_threshold_time = 0;
+            }
+
+            // check exit: hit max entities
+            if (entities.count >= sandbox.MAX_ENTITIES) {
+                std.debug.print("benchmark complete: hit max {d} entities\n", .{sandbox.MAX_ENTITIES});
+                break;
+            }
+
+            // ramp entities
+            if (elapsed - last_ramp_time >= BENCH_RAMP_INTERVAL) {
+                for (0..BENCH_RAMP_AMOUNT) |_| entities.add(&rng);
+                last_ramp_time = elapsed;
+            }
+        } else {
+            // manual controls
+            handleInput(&entities, &rng, &paused);
+        }
 
         // update
         if (!paused) {
@@ -210,15 +265,16 @@ pub fn main() !void {
         rl.gl.rlEnd();
         rl.gl.rlSetTexture(0);
 
-        // metrics overlay
-        ui.drawMetrics(&entities, update_time_us, render_time_us, paused, ui_font);
+        // metrics overlay (skip in bench mode for cleaner headless run)
+        if (!bench_mode) {
+            ui.drawMetrics(&entities, update_time_us, render_time_us, paused, ui_font);
+        }
 
         rl.endDrawing();
 
         render_time_us = std.time.microTimestamp() - render_start;
 
         // smart logging
-        const frame_ms = dt * 1000.0;
         const update_ms = @as(f32, @floatFromInt(update_time_us)) / 1000.0;
         const render_ms = @as(f32, @floatFromInt(render_time_us)) / 1000.0;
         logger.log(elapsed, entities.count, frame_ms, update_ms, render_ms);

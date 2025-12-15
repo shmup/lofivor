@@ -1,4 +1,5 @@
-.zig-cache
-zig-out
-CLAUDE.md
+*.log
 .claude
+.zig-cache
+CLAUDE.md
+zig-out
