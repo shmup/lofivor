@@ -1,0 +1,50 @@
+name: release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    runs-on: codeberg-small
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Zig
+        run: |
+          curl -L https://ziglang.org/download/0.15.2/zig-x86_64-linux-0.15.2.tar.xz | tar -xJ
+          echo "$PWD/zig-x86_64-linux-0.15.2" >> $GITHUB_PATH
+
+      - name: Install X11 dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libxext-dev libxfixes-dev libgl1-mesa-dev
+
+      - name: Build Linux x86_64
+        run: |
+          zig build -Doptimize=ReleaseFast
+          mv zig-out/bin/sandbox lofivor-linux-x86_64
+
+      - name: Build Windows x86_64
+        run: |
+          zig build -Dtarget=x86_64-windows-gnu -Doptimize=ReleaseFast
+          mv zig-out/bin/sandbox.exe lofivor-windows-x86_64.exe
+
+      - name: Upload to release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          RELEASE_ID="${{ github.event.release.id }}"
+          API_URL="${{ github.api_url }}/repos/${{ github.repository }}/releases/${RELEASE_ID}/assets"
+
+          for file in lofivor-linux-x86_64 lofivor-windows-x86_64.exe; do
+            echo "Uploading $file..."
+            curl -X POST \
+              -H "Authorization: token ${GITHUB_TOKEN}" \
+              -H "Content-Type: application/octet-stream" \
+              --data-binary @"$file" \
+              "${API_URL}?name=${file}"
+          done
