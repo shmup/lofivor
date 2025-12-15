@@ -227,8 +227,7 @@ pub fn main() !void {
 
 fn handleInput(entities: *sandbox.Entities, rng: *std.Random, paused: *bool) void {
     const shift = rl.isKeyDown(.left_shift) or rl.isKeyDown(.right_shift);
-    const ctrl = rl.isKeyDown(.left_control) or rl.isKeyDown(.right_control);
-    const add_count: usize = if (ctrl and shift) 10000 else if (shift) 1000 else 100;
+    const add_count: usize = if (shift) 10000 else 1000;
 
     // add entities: = or +
     if (rl.isKeyPressed(.equal) or rl.isKeyPressed(.kp_add)) {

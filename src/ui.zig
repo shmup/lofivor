@@ -67,16 +67,15 @@ pub fn drawMetrics(entities: *const sandbox.Entities, update_us: i64, render_us:
 }
 
 fn drawControls(font: rl.Font, metrics_height: i32) void {
-    const ctrl_box_height: i32 = @intFromFloat(small_line_height * 5 + box_padding * 2);
+    const ctrl_box_height: i32 = @intFromFloat(small_line_height * 4 + box_padding * 2);
     const ctrl_box_y: i32 = 5 + metrics_height + 5;
     rl.drawRectangle(5, ctrl_box_y, 175, ctrl_box_height, box_bg);
 
     var y: f32 = @as(f32, @floatFromInt(ctrl_box_y)) + box_padding;
 
     const controls = [_][]const u8{
-        "+/-: add/remove 100",
-        "shift +/-: 1000",
-        "ctrl+shift +/-: 10000",
+        "+/-: 1000 entities",
+        "shift +/-: 10000",
         "space: pause",
         "r: reset",
     };
