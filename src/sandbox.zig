@@ -18,7 +18,7 @@ pub const Entity = struct {
     color: u32,
 };
 
-pub const MAX_ENTITIES: usize = 100_000;
+pub const MAX_ENTITIES: usize = 1_000_000;
 
 pub const Entities = struct {
     items: [MAX_ENTITIES]Entity,
