@@ -9,29 +9,6 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    const exe = b.addExecutable(.{
-        .name = "lofivor",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/main.zig"),
-            .target = target,
-            .optimize = optimize,
-        }),
-    });
-
-    exe.root_module.addImport("raylib", raylib_dep.module("raylib"));
-    exe.linkLibrary(raylib_dep.artifact("raylib"));
-
-    b.installArtifact(exe);
-
-    const run_cmd = b.addRunArtifact(exe);
-    run_cmd.step.dependOn(b.getInstallStep());
-    if (b.args) |args| {
-        run_cmd.addArgs(args);
-    }
-
-    const run_step = b.step("run", "run the game");
-    run_step.dependOn(&run_cmd.step);
-
     // sandbox executable
     const sandbox_exe = b.addExecutable(.{
         .name = "sandbox",
@@ -56,14 +33,14 @@ pub fn build(b: *std.Build) void {
     const sandbox_step = b.step("sandbox", "run the sandbox stress test");
     sandbox_step.dependOn(&sandbox_run_cmd.step);
 
+    // make sandbox the default run target
+    const run_step = b.step("run", "run the sandbox");
+    run_step.dependOn(&sandbox_run_cmd.step);
+
     // test step (doesn't need raylib)
     const test_step = b.step("test", "run unit tests");
 
     const test_files = [_][]const u8{
-        "src/fixed.zig",
-        "src/trig.zig",
-        "src/terrain.zig",
-        "src/game.zig",
         "src/sandbox.zig",
     };
 
