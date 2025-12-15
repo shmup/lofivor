@@ -167,7 +167,8 @@ pub fn main() !void {
 
 fn handleInput(entities: *sandbox.Entities, rng: *std.Random, paused: *bool) void {
     const shift = rl.isKeyDown(.left_shift) or rl.isKeyDown(.right_shift);
-    const add_count: usize = if (shift) 1000 else 100;
+    const ctrl = rl.isKeyDown(.left_control) or rl.isKeyDown(.right_control);
+    const add_count: usize = if (ctrl and shift) 10000 else if (shift) 1000 else 100;
 
     // add entities: = or +
     if (rl.isKeyPressed(.equal) or rl.isKeyPressed(.kp_add)) {
@@ -232,6 +233,6 @@ fn drawMetrics(entities: *const sandbox.Entities, update_us: i64, render_us: i64
 
     // controls help (bottom)
     const help_y: i32 = @intCast(SCREEN_HEIGHT - 30);
-    rl.drawRectangle(5, help_y - 5, 370, 24, rl.Color{ .r = 0, .g = 0, .b = 0, .a = 200 });
-    rl.drawText("+/-: 100  shift+/-: 1000  space: pause  r: reset", 10, help_y, 14, rl.Color.gray);
+    rl.drawRectangle(5, help_y - 5, 470, 24, rl.Color{ .r = 0, .g = 0, .b = 0, .a = 200 });
+    rl.drawText("+/-: 100  shift: 1000  ctrl+shift: 10000  space: pause  r: reset", 10, help_y, 14, rl.Color.gray);
 }
