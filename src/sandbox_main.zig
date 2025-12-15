@@ -133,7 +133,8 @@ fn createCircleTexture() ?rl.Texture2D {
 pub fn main() !void {
     // parse args
     var bench_mode = false;
-    var args = std.process.args();
+    var args = try std.process.argsWithAllocator(std.heap.page_allocator);
+    defer args.deinit();
     _ = args.skip(); // skip program name
     while (args.next()) |arg| {
         if (std.mem.eql(u8, arg, "--bench")) {
