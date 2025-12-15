@@ -43,6 +43,11 @@ findings:
 - total: ~20x improvement from baseline
 - see journal.txt for detailed benchmarks
 
+further options (if needed):
+- increase raylib batch buffer (currently 8192 vertices = 2048 quads per flush)
+- GPU instancing (single draw call for all entities)
+- or just move on - 100k @ 60fps is a solid ceiling
+
 ## phase 4: add collision
 
 - [ ] spatial partitioning (grid or quadtree)
