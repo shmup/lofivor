@@ -29,9 +29,15 @@ findings (AMD Radeon test):
 
 based on phase 2 results:
 
-- [ ] batch rendering, instancing (render-bound confirmed)
-- [ ] ~~if cpu-bound: SIMD, struct-of-arrays, multithreading~~ (not needed)
-- [ ] re-test after each change
+- [x] batch rendering via texture blitting (10x improvement)
+- [x] ~~if cpu-bound: SIMD, struct-of-arrays, multithreading~~ (not needed)
+- [x] re-test after each change
+
+findings:
+- texture blitting: pre-render circle to texture, drawTexture() per entity
+- baseline: 60fps @ ~5k entities
+- optimized: 60fps @ ~50k entities, 30fps @ 100k entities
+- see journal.txt for detailed benchmarks
 
 ## phase 4: add collision
 

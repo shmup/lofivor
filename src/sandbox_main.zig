@@ -12,6 +12,10 @@ const SCREEN_HEIGHT = sandbox.SCREEN_HEIGHT;
 const BG_COLOR = rl.Color{ .r = 10, .g = 10, .b = 18, .a = 255 };
 const CYAN = rl.Color{ .r = 0, .g = 255, .b = 255, .a = 255 };
 
+// entity rendering
+const ENTITY_RADIUS: f32 = 4.0;
+const TEXTURE_SIZE: i32 = 16; // must be >= 2 * radius
+
 // logging thresholds
 const TARGET_FRAME_MS: f32 = 16.7; // 60fps
 const THRESHOLD_MARGIN: f32 = 2.0; // hysteresis margin to avoid bounce
@@ -102,10 +106,34 @@ const BenchmarkLogger = struct {
     }
 };
 
+fn createCircleTexture() ?rl.Texture2D {
+    // create a render texture to draw circle into
+    const target = rl.loadRenderTexture(TEXTURE_SIZE, TEXTURE_SIZE) catch return null;
+
+    rl.beginTextureMode(target);
+    rl.clearBackground(rl.Color{ .r = 0, .g = 0, .b = 0, .a = 0 }); // transparent
+    rl.drawCircle(
+        @divTrunc(TEXTURE_SIZE, 2),
+        @divTrunc(TEXTURE_SIZE, 2),
+        ENTITY_RADIUS,
+        CYAN,
+    );
+    rl.endTextureMode();
+
+    return target.texture;
+}
+
 pub fn main() !void {
     rl.initWindow(@intCast(SCREEN_WIDTH), @intCast(SCREEN_HEIGHT), "lofivor sandbox");
     defer rl.closeWindow();
     rl.setTargetFPS(60);
+
+    // create circle texture for batched rendering
+    const circle_texture = createCircleTexture() orelse {
+        std.debug.print("failed to create circle texture\n", .{});
+        return;
+    };
+    defer rl.unloadTexture(circle_texture);
 
     var entities = sandbox.Entities.init();
     var prng = std.Random.DefaultPrng.init(@intCast(std.time.timestamp()));
@@ -140,13 +168,14 @@ pub fn main() !void {
         rl.beginDrawing();
         rl.clearBackground(BG_COLOR);
 
-        // draw entities as filled circles
+        // draw entities using pre-rendered circle texture
+        const half_size = @as(f32, @floatFromInt(TEXTURE_SIZE)) / 2.0;
         for (entities.items[0..entities.count]) |entity| {
-            rl.drawCircle(
-                @intFromFloat(entity.x),
-                @intFromFloat(entity.y),
-                4,
-                CYAN,
+            rl.drawTexture(
+                circle_texture,
+                @intFromFloat(entity.x - half_size),
+                @intFromFloat(entity.y - half_size),
+                rl.Color.white, // tint (white = use original colors)
             );
         }
 

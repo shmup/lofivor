@@ -1,7 +1,7 @@
 .{
     .name = .lofivor,
     .version = "0.0.1",
-    .fingerprint = 0x9de74c19d031cdc9,
+    .fingerprint = 0x74960d9e2a8050e2,
     .dependencies = .{
         .raylib_zig = .{
             .url = "git+https://github.com/raylib-zig/raylib-zig?ref=devel#a4d18b2d1cf8fdddec68b5b084535fca0475f466",

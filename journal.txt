@@ -20,7 +20,40 @@ analysis: linear scaling, each drawCircle = separate GPU draw call
 
 ---
 
-optimization 1: [pending]
+optimization 1: texture blitting
+--------------------------------
+technique: pre-render circle to 16x16 texture, drawTexture() per entity
+code: sandbox_main.zig:109-124, 170-177
+
+benchmark2.log results:
+- 60fps stable: ~50,000 entities
+- 60fps breaks: ~52,000-55,000 entities (18-21ms frame)
+- 23k entities: 16.7ms frame (still vsync-locked)
+- 59k entities: 20.6ms frame
+
+extended benchmark (benchmark3):
+- 50k entities: 16.7ms (vsync-locked, briefly touches 19ms)
+- 60k entities: 20.7ms
+- 70k entities: 23.7ms
+- 80k entities: 30.1ms
+- 100k entities: 33-37ms (~30fps)
+
+comparison to baseline:
+- baseline broke 60fps at ~5,000 entities
+- texture blitting breaks at ~50,000 entities
+- ~10x improvement in entity ceiling
+
+analysis: raylib batches texture draws internally when using same texture.
+individual drawCircle() = separate draw call each. drawTexture() with same
+texture = batched into fewer GPU calls.
+
+notes: render_ms stays ~16-18ms up to ~50k, then scales roughly linearly.
+at 100k entities we're at ~30fps which is still playable. update loop
+remains negligible (<0.6ms even at 100k).
+
+---
+
+optimization 2: [pending]
 -------------------------
 technique:
 results:
