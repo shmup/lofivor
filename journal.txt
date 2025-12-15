@@ -1,0 +1,28 @@
+lofivor optimization journal
+=============================
+
+goal: maximize entity count at 60fps for survivor-like game
+
+baseline: individual drawCircle calls
+-------------------------------------
+technique: rl.drawCircle() per entity in loop
+code: sandbox_main.zig:144-151
+bottleneck: render-bound (update <1ms even at 30k entities)
+
+benchmark1.log results (AMD Radeon):
+- 60fps stable: ~4000 entities
+- 60fps breaks: ~5000 entities (19.9ms frame)
+- 10k entities: ~43ms frame
+- 20k entities: ~77ms frame
+- 25k entities: ~97ms frame
+
+analysis: linear scaling, each drawCircle = separate GPU draw call
+
+---
+
+optimization 1: [pending]
+-------------------------
+technique:
+results:
+notes:
+
