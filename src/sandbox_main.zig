@@ -277,8 +277,20 @@ fn drawMetrics(entities: *const sandbox.Entities, update_us: i64, render_us: i64
         rl.drawText("PAUSED", 10, y, 16, rl.Color.yellow);
     }
 
-    // controls help (bottom)
-    const help_y: i32 = @intCast(SCREEN_HEIGHT - 30);
-    rl.drawRectangle(5, help_y - 5, 470, 24, rl.Color{ .r = 0, .g = 0, .b = 0, .a = 200 });
-    rl.drawText("+/-: 100  shift: 1000  ctrl+shift: 10000  space: pause  r: reset", 10, help_y, 14, rl.Color.gray);
+    // controls legend (top left, beneath debug info)
+    const ctrl_line_height: i32 = 18;
+    const ctrl_box_height: i32 = ctrl_line_height * 5 + 16; // 5 lines + padding
+    const ctrl_box_y: i32 = 5 + bg_height + 5; // beneath debug box with gap
+    rl.drawRectangle(5, ctrl_box_y, 160, ctrl_box_height, rl.Color{ .r = 0, .g = 0, .b = 0, .a = 200 });
+
+    var ctrl_y: i32 = ctrl_box_y + 8;
+    rl.drawText("+/-: add/remove 100", 10, ctrl_y, 14, rl.Color.gray);
+    ctrl_y += ctrl_line_height;
+    rl.drawText("shift +/-: 1000", 10, ctrl_y, 14, rl.Color.gray);
+    ctrl_y += ctrl_line_height;
+    rl.drawText("ctrl+shift +/-: 10000", 10, ctrl_y, 14, rl.Color.gray);
+    ctrl_y += ctrl_line_height;
+    rl.drawText("space: pause", 10, ctrl_y, 14, rl.Color.gray);
+    ctrl_y += ctrl_line_height;
+    rl.drawText("r: reset", 10, ctrl_y, 14, rl.Color.gray);
 }
