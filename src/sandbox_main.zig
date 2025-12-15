@@ -225,20 +225,46 @@ pub fn main() !void {
     }
 }
 
+const REPEAT_DELAY: f32 = 0.4; // initial delay before repeat
+const REPEAT_RATE: f32 = 0.05; // repeat interval
+
+var add_timer: f32 = 0;
+var sub_timer: f32 = 0;
+
 fn handleInput(entities: *sandbox.Entities, rng: *std.Random, paused: *bool) void {
+    const dt = rl.getFrameTime();
     const shift = rl.isKeyDown(.left_shift) or rl.isKeyDown(.right_shift);
     const add_count: usize = if (shift) 10000 else 1000;
 
+    const add_held = rl.isKeyDown(.equal) or rl.isKeyDown(.kp_add);
+    const sub_held = rl.isKeyDown(.minus) or rl.isKeyDown(.kp_subtract);
+
     // add entities: = or +
     if (rl.isKeyPressed(.equal) or rl.isKeyPressed(.kp_add)) {
-        for (0..add_count) |_| {
-            entities.add(rng);
+        for (0..add_count) |_| entities.add(rng);
+        add_timer = REPEAT_DELAY;
+    } else if (add_held) {
+        add_timer -= dt;
+        if (add_timer <= 0) {
+            for (0..add_count) |_| entities.add(rng);
+            add_timer = REPEAT_RATE;
         }
+    } else {
+        add_timer = 0;
     }
 
     // remove entities: - or _
     if (rl.isKeyPressed(.minus) or rl.isKeyPressed(.kp_subtract)) {
         entities.remove(add_count);
+        sub_timer = REPEAT_DELAY;
+    } else if (sub_held) {
+        sub_timer -= dt;
+        if (sub_timer <= 0) {
+            entities.remove(add_count);
+            sub_timer = REPEAT_RATE;
+        }
+    } else {
+        sub_timer = 0;
     }
 
     // reset: r
