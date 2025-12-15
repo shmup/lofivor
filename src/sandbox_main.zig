@@ -168,16 +168,33 @@ pub fn main() !void {
         rl.beginDrawing();
         rl.clearBackground(BG_COLOR);
 
-        // draw entities using pre-rendered circle texture
-        const half_size = @as(f32, @floatFromInt(TEXTURE_SIZE)) / 2.0;
+        // draw entities using rlgl quad batching
+        const size = @as(f32, @floatFromInt(TEXTURE_SIZE));
+        const half = size / 2.0;
+
+        rl.gl.rlSetTexture(circle_texture.id);
+        rl.gl.rlBegin(rl.gl.rl_quads);
+        rl.gl.rlColor4ub(255, 255, 255, 255); // white tint
+
         for (entities.items[0..entities.count]) |entity| {
-            rl.drawTexture(
-                circle_texture,
-                @intFromFloat(entity.x - half_size),
-                @intFromFloat(entity.y - half_size),
-                rl.Color.white, // tint (white = use original colors)
-            );
+            const x1 = entity.x - half;
+            const y1 = entity.y - half;
+            const x2 = entity.x + half;
+            const y2 = entity.y + half;
+
+            // quad vertices: bottom-left, bottom-right, top-right, top-left
+            rl.gl.rlTexCoord2f(0, 0);
+            rl.gl.rlVertex2f(x1, y2);
+            rl.gl.rlTexCoord2f(1, 0);
+            rl.gl.rlVertex2f(x2, y2);
+            rl.gl.rlTexCoord2f(1, 1);
+            rl.gl.rlVertex2f(x2, y1);
+            rl.gl.rlTexCoord2f(0, 1);
+            rl.gl.rlVertex2f(x1, y1);
         }
+
+        rl.gl.rlEnd();
+        rl.gl.rlSetTexture(0);
 
         // metrics overlay
         drawMetrics(&entities, update_time_us, render_time_us, paused);

@@ -1,0 +1,15 @@
+# lofivor sandbox benchmark
+# time entities frame_ms update_ms render_ms note
+[0.1s] entities=0 frame=78.7ms update=0.0ms render=12.2ms [!60fps]
+[0.1s] entities=0 frame=16.7ms update=0.0ms render=15.0ms [+60fps]
+[10.0s] entities=40000 frame=16.7ms update=0.3ms render=16.5ms 
+[13.5s] entities=100000 frame=19.5ms update=0.5ms render=16.6ms [!60fps]
+[13.5s] entities=100000 frame=16.7ms update=0.4ms render=16.4ms [+60fps]
+[15.0s] entities=100000 frame=18.8ms update=0.9ms render=16.7ms [!60fps]
+[15.0s] entities=100000 frame=16.7ms update=0.5ms render=16.2ms [+60fps]
+[15.3s] entities=100000 frame=19.2ms update=0.7ms render=18.8ms [!60fps]
+[15.6s] entities=100000 frame=16.7ms update=0.5ms render=16.2ms [+60fps]
+[16.1s] entities=100000 frame=18.8ms update=0.5ms render=17.8ms [!60fps]
+[16.2s] entities=100000 frame=16.7ms update=0.4ms render=16.3ms [+60fps]
+[17.2s] entities=100000 frame=18.7ms update=0.5ms render=17.7ms [!60fps]
+[18.4s] entities=100000 frame=16.7ms update=0.3ms render=16.3ms [+60fps]

@@ -1,0 +1,24 @@
+# lofivor sandbox benchmark
+# time entities frame_ms update_ms render_ms note
+[0.1s] entities=0 frame=83.0ms update=0.0ms render=12.4ms [!60fps]
+[0.1s] entities=0 frame=16.7ms update=0.0ms render=12.4ms [+60fps]
+[10.0s] entities=4000 frame=16.7ms update=0.0ms render=16.9ms 
+[12.7s] entities=5000 frame=19.9ms update=0.0ms render=19.4ms [!60fps]
+[14.8s] entities=6000 frame=26.4ms update=0.0ms render=23.5ms [jump]
+[18.0s] entities=7000 frame=32.4ms update=0.0ms render=27.7ms [jump]
+[20.0s] entities=8000 frame=30.9ms update=0.0ms render=30.8ms 
+[20.3s] entities=8000 frame=36.1ms update=0.0ms render=29.9ms [jump]
+[20.4s] entities=8000 frame=52.6ms update=0.0ms render=30.8ms [jump]
+[30.0s] entities=11000 frame=43.5ms update=0.1ms render=43.4ms 
+[30.6s] entities=12000 frame=54.5ms update=0.1ms render=45.3ms [jump]
+[38.5s] entities=15000 frame=60.6ms update=0.1ms render=59.2ms [jump]
+[40.0s] entities=15000 frame=57.1ms update=0.1ms render=57.5ms 
+[40.4s] entities=16000 frame=62.7ms update=0.1ms render=62.8ms [jump]
+[42.6s] entities=17000 frame=72.9ms update=0.1ms render=65.5ms [jump]
+[48.4s] entities=20000 frame=79.1ms update=0.1ms render=75.2ms [jump]
+[50.1s] entities=20000 frame=77.0ms update=0.1ms render=75.0ms 
+[50.8s] entities=21000 frame=83.1ms update=0.1ms render=80.2ms [jump]
+[52.9s] entities=22000 frame=92.9ms update=0.1ms render=86.6ms [jump]
+[57.3s] entities=24000 frame=98.5ms update=0.1ms render=100.2ms [jump]
+[60.1s] entities=25000 frame=97.4ms update=0.1ms render=95.6ms 
+[62.6s] entities=26000 frame=107.6ms update=0.1ms render=100.2ms [jump]

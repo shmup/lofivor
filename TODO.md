@@ -30,13 +30,17 @@ findings (AMD Radeon test):
 based on phase 2 results:
 
 - [x] batch rendering via texture blitting (10x improvement)
+- [x] rlgl quad batching (2x improvement on top)
 - [x] ~~if cpu-bound: SIMD, struct-of-arrays, multithreading~~ (not needed)
 - [x] re-test after each change
 
 findings:
 - texture blitting: pre-render circle to texture, drawTexture() per entity
+- rlgl batching: submit vertices directly via rl.gl, bypass drawTexture overhead
 - baseline: 60fps @ ~5k entities
-- optimized: 60fps @ ~50k entities, 30fps @ 100k entities
+- after texture blitting: 60fps @ ~50k entities
+- after rlgl batching: 60fps @ ~100k entities
+- total: ~20x improvement from baseline
 - see journal.txt for detailed benchmarks
 
 ## phase 4: add collision

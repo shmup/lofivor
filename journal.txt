@@ -53,7 +53,37 @@ remains negligible (<0.6ms even at 100k).
 
 ---
 
-optimization 2: [pending]
+optimization 2: rlgl quad batching
+-----------------------------------
+technique: bypass drawTexture(), submit vertices directly via rlgl
+code: sandbox_main.zig:175-197
+- rl.gl.rlSetTexture() once
+- rl.gl.rlBegin(rl_quads)
+- loop: rlTexCoord2f + rlVertex2f for 4 vertices per entity
+- rl.gl.rlEnd()
+
+benchmark3.log results:
+- 40k entities: 16.7ms (vsync-locked)
+- 100k entities: 16.7-19.2ms (~55-60fps)
+
+comparison to optimization 1:
+- texture blitting: 100k @ 33-37ms (~30fps)
+- rlgl batching: 100k @ 16.7-19ms (~55-60fps)
+- ~2x improvement
+
+total improvement from baseline:
+- baseline: 60fps @ ~5k entities
+- final: 60fps @ ~100k entities
+- ~20x improvement overall
+
+analysis: drawTexture() has per-call overhead (type conversions, batch state
+checks). rlgl submits vertices directly to GPU buffer. raylib's internal batch
+(8192 vertices = ~2048 quads) auto-flushes, so 100k entities = ~49 draw calls
+vs 100k drawTexture calls with their overhead.
+
+---
+
+optimization 3: [pending]
 -------------------------
 technique:
 results:
