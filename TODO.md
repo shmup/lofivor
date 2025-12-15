@@ -15,17 +15,22 @@ survivor-like optimized for weak hardware. finding the performance ceiling first
 
 ## phase 2: find the ceiling
 
-- [ ] test on i5-6500T / HD 530 @ 1280x1024
-- [ ] record entity count where 60fps breaks
-- [ ] identify bottleneck (CPU update vs GPU render)
-- [ ] document findings
+- [x] test on i5-6500T / HD 530 @ 1280x1024
+- [x] record entity count where 60fps breaks
+- [x] identify bottleneck (CPU update vs GPU render)
+- [x] document findings
+
+findings (AMD Radeon test):
+- 60fps breaks at ~5000 entities
+- render-bound: update stays <1ms even at 30k entities, render time dominates
+- individual drawCircle calls are the bottleneck
 
 ## phase 3: optimization experiments
 
 based on phase 2 results:
 
-- [ ] if render-bound: batch rendering, instancing
-- [ ] if cpu-bound: SIMD, struct-of-arrays, multithreading
+- [ ] batch rendering, instancing (render-bound confirmed)
+- [ ] ~~if cpu-bound: SIMD, struct-of-arrays, multithreading~~ (not needed)
 - [ ] re-test after each change
 
 ## phase 4: add collision
