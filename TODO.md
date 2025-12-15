@@ -48,22 +48,26 @@ further options (if needed):
 - GPU instancing (single draw call for all entities)
 - or just move on - 100k @ 60fps is a solid ceiling
 
-## phase 4: add collision
+## phase 4: spatial partitioning
 
-- [ ] spatial partitioning (grid or quadtree)
-- [ ] projectile-to-enemy collision
-- [ ] measure new ceiling with collision enabled
+- [ ] uniform grid collision
+- [ ] quadtree comparison
+- [ ] measure ceiling with n² collision checks enabled
 
-## phase 5: game loop
+## phase 5: rendering experiments
 
-- [ ] player entity (keyboard controlled)
-- [ ] enemy spawning waves
-- [ ] player attacks / projectiles
-- [ ] enemy death on hit
-- [ ] basic game feel
+- [ ] increase raylib batch buffer (currently 8192 vertices = 2048 quads)
+- [ ] GPU instancing (single draw call for all entities)
+- [ ] compute shader entity updates (if raylib supports)
+- [ ] compare OpenGL vs Vulkan backend
 
-## future
+## future optimization concepts
 
-- [ ] different enemy types
-- [ ] player upgrades
-- [ ] actual game design (after we know the constraints)
+- [ ] SIMD entity updates (AVX2/SSE)
+- [ ] struct-of-arrays vs array-of-structs benchmark
+- [ ] multithreaded update loop (thread pool)
+- [ ] cache-friendly memory layouts
+- [ ] LOD rendering (skip distant entities or reduce detail)
+- [ ] frustum culling (only render visible)
+- [ ] temporal techniques (update subset per frame)
+- [ ] fixed-point vs floating-point math
