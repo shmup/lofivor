@@ -8,37 +8,9 @@ const sandbox = @import("sandbox.zig");
 const SCREEN_WIDTH = sandbox.SCREEN_WIDTH;
 const SCREEN_HEIGHT = sandbox.SCREEN_HEIGHT;
 
-fn loadShaderFile(path: []const u8) ?[:0]const u8 {
-    const file = std.fs.cwd().openFile(path, .{}) catch |err| {
-        std.debug.print("ssbo: failed to open {s}: {}\n", .{ path, err });
-        return null;
-    };
-    defer file.close();
-
-    const stat = file.stat() catch |err| {
-        std.debug.print("ssbo: failed to stat {s}: {}\n", .{ path, err });
-        return null;
-    };
-
-    const buf = std.heap.page_allocator.allocSentinel(u8, stat.size, 0) catch |err| {
-        std.debug.print("ssbo: failed to allocate for {s}: {}\n", .{ path, err });
-        return null;
-    };
-
-    const bytes_read = file.readAll(buf) catch |err| {
-        std.debug.print("ssbo: failed to read {s}: {}\n", .{ path, err });
-        std.heap.page_allocator.free(buf);
-        return null;
-    };
-
-    if (bytes_read != stat.size) {
-        std.debug.print("ssbo: incomplete read of {s}\n", .{path});
-        std.heap.page_allocator.free(buf);
-        return null;
-    }
-
-    return buf;
-}
+// shaders embedded at build time
+const vert_source = @embedFile("shaders/entity.vert");
+const frag_source = @embedFile("shaders/entity.frag");
 
 pub const SsboRenderer = struct {
     shader_id: u32,
@@ -70,21 +42,6 @@ pub const SsboRenderer = struct {
             std.debug.print("ssbo: failed to allocate gpu_buffer\n", .{});
             return null;
         };
-
-        // load shaders from files at runtime
-        const vert_source = loadShaderFile("shaders/entity.vert") orelse {
-            std.debug.print("ssbo: failed to load vertex shader\n", .{});
-            std.heap.page_allocator.free(gpu_buffer);
-            return null;
-        };
-        defer std.heap.page_allocator.free(vert_source);
-
-        const frag_source = loadShaderFile("shaders/entity.frag") orelse {
-            std.debug.print("ssbo: failed to load fragment shader\n", .{});
-            std.heap.page_allocator.free(gpu_buffer);
-            return null;
-        };
-        defer std.heap.page_allocator.free(frag_source);
 
         const shader_id = rl.gl.rlLoadShaderCode(vert_source, frag_source);
         if (shader_id == 0) {
@@ -152,8 +109,6 @@ pub const SsboRenderer = struct {
         // unbind VAO
         _ = rl.gl.rlEnableVertexArray(0);
 
-        std.debug.print("ssbo: initialized (shader={}, vao={}, vbo={}, ssbo={})\n", .{ shader_id, vao_id, vbo_id, ssbo_id });
-
         return .{
             .shader_id = shader_id,
             .vao_id = vao_id,
@@ -200,7 +155,7 @@ pub const SsboRenderer = struct {
         const screen_size = [2]f32{ @floatFromInt(SCREEN_WIDTH), @floatFromInt(SCREEN_HEIGHT) };
         rl.gl.rlSetUniform(self.screen_size_loc, &screen_size, @intFromEnum(rl.gl.rlShaderUniformDataType.rl_shader_uniform_vec2), 1);
 
-        // bind texture - try different order
+        // bind texture
         rl.gl.rlActiveTextureSlot(0);
         rl.gl.rlEnableTexture(self.circle_texture_id);
         // use rlSetUniform with int type instead of rlSetUniformSampler
