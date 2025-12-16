@@ -155,19 +155,18 @@ pub fn main() !void {
     // parse args
     var bench_mode = false;
     var use_instancing = false;
-    var use_ssbo = false;
+    var use_ssbo = true;
     var args = try std.process.argsWithAllocator(std.heap.page_allocator);
     defer args.deinit();
     _ = args.skip(); // skip program name
     while (args.next()) |arg| {
         if (std.mem.eql(u8, arg, "--bench")) {
             bench_mode = true;
-            use_ssbo = true; // bench mode uses SSBO by default
         } else if (std.mem.eql(u8, arg, "--gpu")) {
             use_instancing = true;
-            use_ssbo = false; // explicit --gpu overrides SSBO
-        } else if (std.mem.eql(u8, arg, "--ssbo")) {
-            use_ssbo = true;
+            use_ssbo = false; // legacy GPU instancing path
+        } else if (std.mem.eql(u8, arg, "--legacy")) {
+            use_ssbo = false; // legacy rlgl batched path
         }
     }
 
