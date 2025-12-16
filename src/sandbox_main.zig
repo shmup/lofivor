@@ -145,6 +145,16 @@ pub fn main() !void {
     defer rl.closeWindow();
     rl.setTargetFPS(60);
 
+    // use larger batch buffer: 16384 elements vs default 8192
+    // fewer flushes = less driver overhead per frame
+    const numElements: i32 = 8192 * 4; // quads = 4 verts
+    var custom_batch = rl.gl.rlLoadRenderBatch(1, numElements);
+    rl.gl.rlSetRenderBatchActive(&custom_batch);
+    defer {
+        rl.gl.rlSetRenderBatchActive(null); // restore default
+        rl.gl.rlUnloadRenderBatch(custom_batch);
+    }
+
     // create circle texture for batched rendering
     const circle_texture = createCircleTexture() orelse {
         std.debug.print("failed to create circle texture\n", .{});
