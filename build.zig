@@ -4,6 +4,9 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    // tracy profiling (run with -Dtracy=true)
+    const enable_tracy = b.option(bool, "tracy", "Enable Tracy profiler") orelse false;
+
     const raylib_dep = b.dependency("raylib_zig", .{
         .target = target,
         .optimize = optimize,
@@ -23,6 +26,16 @@ pub fn build(b: *std.Build) void {
 
     sandbox_exe.root_module.addImport("raylib", raylib_dep.module("raylib"));
     sandbox_exe.linkLibrary(raylib_dep.artifact("raylib"));
+
+    // tracy integration (optional)
+    const ztracy = b.dependency("ztracy", .{
+        .enable_ztracy = enable_tracy,
+        .on_demand = true, // allow connecting after app starts
+    });
+    sandbox_exe.root_module.addImport("ztracy", ztracy.module("root"));
+    if (enable_tracy) {
+        sandbox_exe.linkLibrary(ztracy.artifact("tracy"));
+    }
 
     b.installArtifact(sandbox_exe);
 

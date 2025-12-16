@@ -42,7 +42,7 @@ check:
 test:
     zig build test
 
-# auto-benchmark (ramps entities until performance degrades, works on linux/windows)
+# auto-benchmark (ramps entities until performance degrades)
 bench:
     zig build -Doptimize=ReleaseFast run -- --bench
     cat benchmark.log
@@ -58,3 +58,8 @@ bench-sw:
 bench-sw:
     @echo "bench-sw: windows doesn't have xvfb equivalent"
     @echo "use 'just bench' if you have a GPU, or run in WSL/linux CI"
+
+[linux]
+profile port="9876":
+  # start Tracy: tracy-profiler -a 127.0.0.1 -p {{port}}
+  zig build -Dtracy=true -Doptimize=ReleaseFast && TRACY_PORT={{port}} ./zig-out/bin/sandbox

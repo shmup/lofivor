@@ -3,6 +3,7 @@
 
 const std = @import("std");
 const rl = @import("raylib");
+const ztracy = @import("ztracy");
 const sandbox = @import("sandbox.zig");
 const ui = @import("ui.zig");
 const SsboRenderer = @import("ssbo_renderer.zig").SsboRenderer;
@@ -331,12 +332,16 @@ pub fn main() !void {
 
         // update
         if (!paused) {
+            const tracy_update = ztracy.ZoneN(@src(), "update");
+            defer tracy_update.End();
             const update_start = std.time.microTimestamp();
             sandbox.update(&entities, &rng);
             update_time_us = std.time.microTimestamp() - update_start;
         }
 
         // render
+        const tracy_render = ztracy.ZoneN(@src(), "render");
+        defer tracy_render.End();
         const render_start = std.time.microTimestamp();
 
         rl.beginDrawing();
@@ -407,6 +412,9 @@ pub fn main() !void {
         const update_ms = @as(f32, @floatFromInt(update_time_us)) / 1000.0;
         const render_ms = @as(f32, @floatFromInt(render_time_us)) / 1000.0;
         logger.log(elapsed, entities.count, frame_ms, update_ms, render_ms);
+
+        // tracy frame mark
+        ztracy.FrameMark();
     }
 }
 

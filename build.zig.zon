@@ -7,6 +7,10 @@
             .url = "git+https://github.com/raylib-zig/raylib-zig#a4d18b2d1cf8fdddec68b5b084535fca0475f466",
             .hash = "raylib_zig-5.6.0-dev-KE8REL5MBQAf3p497t52Xw9P7ojndIkVOWPXnLiLLw2P",
         },
+        .ztracy = .{
+            .url = "git+https://github.com/zig-gamedev/ztracy?ref=main#e7b401dea9ce006f8b236e3a2ca1a9f3d5c3e896",
+            .hash = "ztracy-0.14.0-dev-zHJSq78GGQC904aYvBPn6OOvRVOq_opAwDfeHZdvQyej",
+        },
     },
     .paths = .{
         "build.zig",

@@ -3,6 +3,7 @@
 
 const std = @import("std");
 const rl = @import("raylib");
+const ztracy = @import("ztracy");
 const sandbox = @import("sandbox.zig");
 
 const SCREEN_WIDTH = sandbox.SCREEN_WIDTH;
@@ -142,17 +143,25 @@ pub const SsboRenderer = struct {
         rl.gl.rlDrawRenderBatchActive();
 
         // copy entity data to GPU buffer (position + color only)
-        for (entities.items[0..entities.count], 0..) |entity, i| {
-            self.gpu_buffer[i] = .{
-                .x = entity.x,
-                .y = entity.y,
-                .color = entity.color,
-            };
+        {
+            const zone = ztracy.ZoneN(@src(), "ssbo_copy");
+            defer zone.End();
+            for (entities.items[0..entities.count], 0..) |entity, i| {
+                self.gpu_buffer[i] = .{
+                    .x = entity.x,
+                    .y = entity.y,
+                    .color = entity.color,
+                };
+            }
         }
 
         // upload to SSBO
-        const data_size: u32 = @intCast(entities.count * @sizeOf(sandbox.GpuEntity));
-        rl.gl.rlUpdateShaderBuffer(self.ssbo_id, self.gpu_buffer.ptr, data_size, 0);
+        {
+            const zone = ztracy.ZoneN(@src(), "ssbo_upload");
+            defer zone.End();
+            const data_size: u32 = @intCast(entities.count * @sizeOf(sandbox.GpuEntity));
+            rl.gl.rlUpdateShaderBuffer(self.ssbo_id, self.gpu_buffer.ptr, data_size, 0);
+        }
 
         // bind shader
         rl.gl.rlEnableShader(self.shader_id);
@@ -183,9 +192,13 @@ pub const SsboRenderer = struct {
         rl.gl.rlSetBlendMode(@intFromEnum(rl.gl.rlBlendMode.rl_blend_alpha));
 
         // bind VAO and draw
-        _ = rl.gl.rlEnableVertexArray(self.vao_id);
-        rl.gl.rlEnableVertexBuffer(self.vbo_id);
-        rl.gl.rlDrawVertexArrayInstanced(0, 6, @intCast(entities.count));
+        {
+            const zone = ztracy.ZoneN(@src(), "ssbo_draw");
+            defer zone.End();
+            _ = rl.gl.rlEnableVertexArray(self.vao_id);
+            rl.gl.rlEnableVertexBuffer(self.vbo_id);
+            rl.gl.rlDrawVertexArrayInstanced(0, 6, @intCast(entities.count));
+        }
 
         // cleanup - restore raylib's expected state
         rl.gl.rlDisableVertexArray();
