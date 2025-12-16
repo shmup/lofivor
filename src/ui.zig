@@ -82,6 +82,41 @@ pub fn drawMetrics(entities: *const sandbox.Entities, update_us: i64, render_us:
     drawControls(font, metrics_y + bg_height);
 }
 
+pub fn drawMemory(entity_count: usize, font: rl.Font) void {
+    if (!show_ui) return;
+
+    var buf: [256]u8 = undefined;
+
+    const box_width: i32 = 160;
+    const box_height: i32 = @intFromFloat(line_height * 3 + box_padding * 2);
+    const box_x: i32 = @as(i32, @intCast(sandbox.SCREEN_WIDTH)) - box_width - 5;
+    const box_y: i32 = 5;
+
+    rl.drawRectangle(box_x, box_y, box_width, box_height, box_bg);
+
+    var y: f32 = @as(f32, @floatFromInt(box_y)) + box_padding;
+    const x: f32 = @floatFromInt(box_x + @as(i32, @intFromFloat(box_padding)));
+
+    // entity memory (CPU side)
+    const entity_bytes = entity_count * @sizeOf(sandbox.Entity);
+    const entity_mb = @as(f32, @floatFromInt(entity_bytes)) / (1024.0 * 1024.0);
+    const entity_text = std.fmt.bufPrintZ(&buf, "cpu:  {d:.1} MB", .{entity_mb}) catch "?";
+    rl.drawTextEx(font, entity_text, .{ .x = x, .y = y }, font_size, 0, text_color);
+    y += line_height;
+
+    // GPU buffer memory (SSBO)
+    const gpu_bytes = entity_count * @sizeOf(sandbox.GpuEntity);
+    const gpu_mb = @as(f32, @floatFromInt(gpu_bytes)) / (1024.0 * 1024.0);
+    const gpu_text = std.fmt.bufPrintZ(&buf, "gpu:  {d:.1} MB", .{gpu_mb}) catch "?";
+    rl.drawTextEx(font, gpu_text, .{ .x = x, .y = y }, font_size, 0, text_color);
+    y += line_height;
+
+    // total
+    const total_mb = entity_mb + gpu_mb;
+    const total_text = std.fmt.bufPrintZ(&buf, "total: {d:.1} MB", .{total_mb}) catch "?";
+    rl.drawTextEx(font, total_text, .{ .x = x, .y = y }, font_size, 0, dim_text_color);
+}
+
 fn drawControls(font: rl.Font, metrics_bottom: i32) void {
     const ctrl_box_height: i32 = @intFromFloat(small_line_height * 5 + box_padding * 2);
     const ctrl_box_y: i32 = metrics_bottom + 5;

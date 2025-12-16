@@ -385,6 +385,7 @@ pub fn main() !void {
         // metrics overlay (skip in bench mode for cleaner headless run)
         if (!bench_mode) {
             ui.drawMetrics(&entities, update_time_us, render_time_us, paused, ui_font);
+            ui.drawMemory(entities.count, ui_font);
         }
 
         rl.endDrawing();
