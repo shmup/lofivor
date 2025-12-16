@@ -10,9 +10,14 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            artifact: sandbox-linux-x86_64
+            target: native
+            artifact: lofivor-linux-x86_64
+          - os: ubuntu-latest
+            target: x86_64-windows-gnu
+            artifact: lofivor-windows-x86_64.exe
           - os: macos-latest
-            artifact: sandbox-macos-aarch64
+            target: native
+            artifact: lofivor-macos-aarch64
 
     runs-on: ${{ matrix.os }}
 
@@ -26,12 +31,24 @@ jobs:
           version: 0.15.2
 
       - name: Install X11 dependencies (Linux)
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-latest' && matrix.target == 'native'
         run: sudo apt-get update && sudo apt-get install -y libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev libxext-dev libxfixes-dev libgl1-mesa-dev
 
-      - run: zig build -Doptimize=ReleaseFast
+      - name: Build native
+        if: matrix.target == 'native'
+        run: zig build -Doptimize=ReleaseFast
 
-      - run: mv zig-out/bin/sandbox ${{ matrix.artifact }}
+      - name: Build cross-compile
+        if: matrix.target != 'native'
+        run: zig build -Dtarget=${{ matrix.target }} -Doptimize=ReleaseFast
+
+      - name: Rename artifact (Unix)
+        if: "!contains(matrix.artifact, '.exe')"
+        run: mv zig-out/bin/sandbox ${{ matrix.artifact }}
+
+      - name: Rename artifact (Windows)
+        if: contains(matrix.artifact, '.exe')
+        run: mv zig-out/bin/sandbox.exe ${{ matrix.artifact }}
 
       - uses: actions/upload-artifact@v4
         with:
