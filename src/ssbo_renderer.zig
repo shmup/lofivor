@@ -19,6 +19,8 @@ pub const SsboRenderer = struct {
     ssbo_id: u32,
     screen_size_loc: i32,
     circle_texture_loc: i32,
+    zoom_loc: i32,
+    pan_loc: i32,
     circle_texture_id: u32,
     gpu_buffer: []sandbox.GpuEntity,
 
@@ -53,6 +55,8 @@ pub const SsboRenderer = struct {
         // get uniform locations
         const screen_size_loc = rl.gl.rlGetLocationUniform(shader_id, "screenSize");
         const circle_texture_loc = rl.gl.rlGetLocationUniform(shader_id, "circleTexture");
+        const zoom_loc = rl.gl.rlGetLocationUniform(shader_id, "zoom");
+        const pan_loc = rl.gl.rlGetLocationUniform(shader_id, "pan");
 
         if (screen_size_loc < 0) {
             std.debug.print("ssbo: warning - screenSize uniform not found\n", .{});
@@ -116,6 +120,8 @@ pub const SsboRenderer = struct {
             .ssbo_id = ssbo_id,
             .screen_size_loc = screen_size_loc,
             .circle_texture_loc = circle_texture_loc,
+            .zoom_loc = zoom_loc,
+            .pan_loc = pan_loc,
             .circle_texture_id = circle_texture.id,
             .gpu_buffer = gpu_buffer,
         };
@@ -129,7 +135,7 @@ pub const SsboRenderer = struct {
         std.heap.page_allocator.free(self.gpu_buffer);
     }
 
-    pub fn render(self: *SsboRenderer, entities: *const sandbox.Entities) void {
+    pub fn render(self: *SsboRenderer, entities: *const sandbox.Entities, zoom: f32, pan: @Vector(2, f32)) void {
         if (entities.count == 0) return;
 
         // flush raylib's internal render batch before our custom GL calls
@@ -154,6 +160,13 @@ pub const SsboRenderer = struct {
         // set screenSize uniform
         const screen_size = [2]f32{ @floatFromInt(SCREEN_WIDTH), @floatFromInt(SCREEN_HEIGHT) };
         rl.gl.rlSetUniform(self.screen_size_loc, &screen_size, @intFromEnum(rl.gl.rlShaderUniformDataType.rl_shader_uniform_vec2), 1);
+
+        // set zoom uniform
+        rl.gl.rlSetUniform(self.zoom_loc, &zoom, @intFromEnum(rl.gl.rlShaderUniformDataType.rl_shader_uniform_float), 1);
+
+        // set pan uniform
+        const pan_arr = [2]f32{ pan[0], pan[1] };
+        rl.gl.rlSetUniform(self.pan_loc, &pan_arr, @intFromEnum(rl.gl.rlShaderUniformDataType.rl_shader_uniform_vec2), 1);
 
         // bind texture
         rl.gl.rlActiveTextureSlot(0);

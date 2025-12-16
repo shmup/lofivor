@@ -31,7 +31,7 @@ pub var show_ui: bool = true;
 // drawing functions
 // =============================================================================
 
-pub fn drawMetrics(entities: *const sandbox.Entities, update_us: i64, render_us: i64, paused: bool, font: rl.Font) void {
+pub fn drawMetrics(entities: *const sandbox.Entities, update_us: i64, render_us: i64, paused: bool, zoom: f32, font: rl.Font) void {
     if (!show_ui) return;
 
     var buf: [256]u8 = undefined;
@@ -47,7 +47,7 @@ pub fn drawMetrics(entities: *const sandbox.Entities, update_us: i64, render_us:
     // metrics box (below fps)
     const metrics_y: i32 = 5 + fps_box_height + 5;
     var y: f32 = @as(f32, @floatFromInt(metrics_y)) + box_padding;
-    const bg_height: i32 = if (paused) 130 else 100;
+    const bg_height: i32 = if (paused) 150 else 120;
     rl.drawRectangle(5, metrics_y, 180, bg_height, box_bg);
 
     // entity count
@@ -70,6 +70,11 @@ pub fn drawMetrics(entities: *const sandbox.Entities, update_us: i64, render_us:
     const render_ms = @as(f32, @floatFromInt(render_us)) / 1000.0;
     const render_text = std.fmt.bufPrintZ(&buf, "render:   {d:.1}ms", .{render_ms}) catch "?";
     rl.drawTextEx(font, render_text, .{ .x = padding, .y = y }, font_size, 0, text_color);
+    y += line_height;
+
+    // zoom level
+    const zoom_text = std.fmt.bufPrintZ(&buf, "zoom:     {d:.1}x", .{zoom}) catch "?";
+    rl.drawTextEx(font, zoom_text, .{ .x = padding, .y = y }, font_size, 0, if (zoom > 1.0) highlight_color else text_color);
     y += line_height;
 
     // paused indicator
@@ -118,7 +123,7 @@ pub fn drawMemory(entity_count: usize, font: rl.Font) void {
 }
 
 fn drawControls(font: rl.Font, metrics_bottom: i32) void {
-    const ctrl_box_height: i32 = @intFromFloat(small_line_height * 5 + box_padding * 2);
+    const ctrl_box_height: i32 = @intFromFloat(small_line_height * 7 + box_padding * 2);
     const ctrl_box_y: i32 = metrics_bottom + 5;
     rl.drawRectangle(5, ctrl_box_y, 175, ctrl_box_height, box_bg);
 
@@ -127,8 +132,10 @@ fn drawControls(font: rl.Font, metrics_bottom: i32) void {
     const controls = [_][]const u8{
         "+/-: 10k entities",
         "shift +/-: 50k",
-        "space: pause",
-        "r: reset",
+        "scroll: zoom",
+        "drag: pan (zoomed)",
+        "space: pause, r: reset",
+        "enter: reset zoom",
         "tab: toggle ui",
     };
 

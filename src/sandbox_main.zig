@@ -31,6 +31,11 @@ const BENCH_RAMP_AMOUNT: usize = 50_000; // entities added per ramp
 const BENCH_EXIT_THRESHOLD_MS: f32 = 25.0; // exit when frame time exceeds this
 const BENCH_EXIT_SUSTAIN: f32 = 1.0; // must stay above threshold for this long
 
+// zoom settings
+const ZOOM_MIN: f32 = 1.0;
+const ZOOM_MAX: f32 = 10.0;
+const ZOOM_SPEED: f32 = 0.1; // multiplier per scroll tick
+
 const BenchmarkLogger = struct {
     file: ?std.fs.File,
     last_logged_frame_ms: f32,
@@ -264,6 +269,11 @@ pub fn main() !void {
     var rng = prng.random();
 
     var paused = false;
+
+    // camera state for zoom/pan
+    var zoom: f32 = 1.0;
+    var pan = @Vector(2, f32){ 0, 0 };
+
     var logger = BenchmarkLogger.init();
     defer logger.deinit();
 
@@ -316,6 +326,7 @@ pub fn main() !void {
         } else {
             // manual controls
             handleInput(&entities, &rng, &paused);
+            handleCamera(&zoom, &pan);
         }
 
         // update
@@ -333,7 +344,7 @@ pub fn main() !void {
 
         if (use_ssbo) {
             // SSBO instanced rendering path (12 bytes per entity)
-            ssbo_renderer.?.render(&entities);
+            ssbo_renderer.?.render(&entities, zoom, pan);
         } else if (use_instancing) {
             // GPU instancing path (64 bytes per entity)
             const xforms = transforms.?;
@@ -384,7 +395,7 @@ pub fn main() !void {
 
         // metrics overlay (skip in bench mode for cleaner headless run)
         if (!bench_mode) {
-            ui.drawMetrics(&entities, update_time_us, render_time_us, paused, ui_font);
+            ui.drawMetrics(&entities, update_time_us, render_time_us, paused, zoom, ui_font);
             ui.drawMemory(entities.count, ui_font);
         }
 
@@ -455,4 +466,69 @@ fn handleInput(entities: *sandbox.Entities, rng: *std.Random, paused: *bool) voi
     if (rl.isKeyPressed(.tab)) {
         ui.show_ui = !ui.show_ui;
     }
+}
+
+fn handleCamera(zoom: *f32, pan: *@Vector(2, f32)) void {
+    const wheel = rl.getMouseWheelMove();
+
+    if (wheel != 0) {
+        const mouse_pos = rl.getMousePosition();
+        const old_zoom = zoom.*;
+
+        // calculate new zoom
+        const zoom_factor = if (wheel > 0) (1.0 + ZOOM_SPEED) else (1.0 / (1.0 + ZOOM_SPEED));
+        var new_zoom = old_zoom * zoom_factor;
+        new_zoom = std.math.clamp(new_zoom, ZOOM_MIN, ZOOM_MAX);
+
+        if (new_zoom != old_zoom) {
+            // zoom toward mouse cursor:
+            // keep the world point under the cursor stationary
+            // world_pos = (screen_pos / old_zoom) + old_pan
+            // new_pan = world_pos - (screen_pos / new_zoom)
+            const world_x = (mouse_pos.x / old_zoom) + pan.*[0];
+            const world_y = (mouse_pos.y / old_zoom) + pan.*[1];
+            pan.*[0] = world_x - (mouse_pos.x / new_zoom);
+            pan.*[1] = world_y - (mouse_pos.y / new_zoom);
+            zoom.* = new_zoom;
+
+            // clamp pan to bounds
+            clampPan(pan, zoom.*);
+        }
+    }
+
+    // pan with any mouse button drag (only when zoomed in)
+    if (zoom.* > 1.0) {
+        const any_button = rl.isMouseButtonDown(.left) or
+            rl.isMouseButtonDown(.right) or
+            rl.isMouseButtonDown(.middle);
+        if (any_button) {
+            const delta = rl.getMouseDelta();
+            // drag down = view down, drag right = view right
+            pan.*[0] -= delta.x / zoom.*;
+            pan.*[1] += delta.y / zoom.*;
+            clampPan(pan, zoom.*);
+        }
+    }
+
+    // reset on Return
+    if (rl.isKeyPressed(.enter)) {
+        zoom.* = 1.0;
+        pan.* = @Vector(2, f32){ 0, 0 };
+    }
+}
+
+fn clampPan(pan: *@Vector(2, f32), zoom: f32) void {
+    // when zoomed in, limit pan so viewport stays in simulation bounds
+    // visible area = screen_size / zoom
+    // max pan = world_size - visible_area
+    const screen_w: f32 = @floatFromInt(SCREEN_WIDTH);
+    const screen_h: f32 = @floatFromInt(SCREEN_HEIGHT);
+    const visible_w = screen_w / zoom;
+    const visible_h = screen_h / zoom;
+
+    const max_pan_x = @max(0, screen_w - visible_w);
+    const max_pan_y = @max(0, screen_h - visible_h);
+
+    pan.*[0] = std.math.clamp(pan.*[0], 0, max_pan_x);
+    pan.*[1] = std.math.clamp(pan.*[1], 0, max_pan_y);
 }
