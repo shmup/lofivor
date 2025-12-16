@@ -4,9 +4,9 @@ organized by performance goal. see journal.txt for detailed benchmarks.
 
 ## current ceiling
 
-- **~150k entities @ 60fps** (i5-6500T / HD 530 integrated)
-- **~260k entities @ 60fps** (AMD Radeon discrete)
-- bottleneck: GPU-bound (update loop stays <1ms even at 200k+)
+- **~700k entities @ 60fps** (i5-6500T / HD 530 integrated, SSBO)
+- **~950k entities @ ~57fps** (i5-6500T / HD 530 integrated, SSBO)
+- bottleneck: GPU-bound (update loop stays <5ms even at 950k)
 
 ---
 
@@ -53,6 +53,25 @@ organized by performance goal. see journal.txt for detailed benchmarks.
   - rlgl batching already minimizes draw calls effectively
 - note: may help more on discrete GPUs with dedicated VRAM
 
+#### optimization 5: SSBO instance data
+
+- technique: pack entity data (x, y, color) into 12-byte struct, upload via SSBO
+- result: **~700k entities @ 60fps** (i5-6500T / HD 530)
+- improvement: **~5x** over previous best, **~140x** total from baseline
+- comparison:
+  - batch buffer (0.3.1): 60fps @ ~140k
+  - GPU instancing (0.4.0): 60fps @ ~150k
+  - SSBO: 60fps @ ~700k, ~57fps @ 950k
+- why it works:
+  - 12 bytes vs 64 bytes (matrices) = 5.3x less bandwidth
+  - 12 bytes vs 80 bytes (rlgl vertices) = 6.7x less bandwidth
+  - no CPU-side matrix calculations
+  - GPU does NDC conversion and color unpacking
+- implementation notes:
+  - custom vertex shader reads from SSBO using `gl_InstanceID`
+  - single `rlDrawVertexArrayInstanced()` call for all entities
+  - gotcha: don't use `rlSetUniformSampler()` for custom GL code - use `rlSetUniform()` with int type instead (see `docs/raylib_rlSetUniformSampler_bug.md`)
+
 ---
 
 ## future optimizations
@@ -63,7 +82,7 @@ these target the rendering bottleneck since update loop is already fast.
 
 | technique              | description                                                          | expected gain                   |
 | ---------------------- | -------------------------------------------------------------------- | ------------------------------- |
-| SSBO instance data     | pack (x, y, color) = 12 bytes instead of 64-byte matrices            | moderate (less bandwidth)       |
+| ~~SSBO instance data~~ | ~~pack (x, y, color) = 12 bytes instead of 64-byte matrices~~        | **done** - see optimization 5   |
 | compute shader updates | move entity positions to GPU entirely, avoid CPU→GPU sync            | significant                     |
 | OpenGL vs Vulkan       | test raylib's Vulkan backend                                         | unknown                         |
 | discrete GPU testing   | test on dedicated GPU where instancing/SSBO shine                    | significant (different hw)      |

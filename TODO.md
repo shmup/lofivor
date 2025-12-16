@@ -58,7 +58,7 @@ further options (if needed):
 
 - [x] increase raylib batch buffer (currently 8192 vertices = 2048 quads)
 - [x] GPU instancing (single draw call for all entities)
-- [ ] SSBO instance data (12 bytes vs 64-byte matrices)
+- [x] SSBO instance data (12 bytes vs 64-byte matrices)
 - [ ] compute shader entity updates (if raylib supports)
 - [ ] compare OpenGL vs Vulkan backend
 

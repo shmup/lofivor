@@ -108,9 +108,101 @@ difference.
 
 ---
 
-optimization 3: [pending]
--------------------------
-technique:
-results:
-notes:
+optimization 3: increased batch buffer
+--------------------------------------
+technique: increase raylib batch buffer from 8192 to 32768 vertices
+code: sandbox_main.zig:150-156
+version: 0.3.1
+
+benchmark_0.3.1.log results (i5-6500T / HD 530):
+- 60fps stable: ~140k entities
+- 140k entities: 16.7ms (vsync-locked)
+- 170k entities: 19.3ms (breaks 60fps)
+- 190k entities: 18.8ms
+- 240k entities: 23ms (benchmark exit)
+
+comparison to 0.3.0 on same hardware:
+- 0.3.0: 60fps breaks at ~64k entities
+- 0.3.1: 60fps stable at ~140k entities
+- ~2x improvement from larger batch buffer
+
+analysis: fewer GPU flushes per frame. default buffer (8192 verts = 2048 quads)
+means 100k entities = ~49 flushes. larger buffer (32768 verts = 8192 quads)
+means 100k entities = ~12 flushes. less driver overhead per frame.
+
+---
+
+optimization 4: GPU instancing (tested, minimal gain)
+-----------------------------------------------------
+technique: drawMeshInstanced() with per-entity 4x4 transform matrices
+code: sandbox_main.zig:173-192, 245-257
+version: 0.4.0
+
+benchmark_0.4.0.log results (i5-6500T / HD 530):
+- 60fps stable: ~150k entities (with occasional spikes)
+- 150k entities: 16.7ms (vsync-locked, spiky)
+- 190k entities: 18-19ms
+- 240k entities: 23ms
+- 270k entities: 28ms (benchmark exit)
+
+comparison to 0.3.1 (batch buffer) on same hardware:
+- 0.3.1: 60fps @ ~140k, exits @ ~240k
+- 0.4.0: 60fps @ ~150k, exits @ ~270k
+- negligible improvement (~7% more entities)
+
+analysis: GPU instancing didn't help much on integrated graphics because:
+1. shared system RAM means no PCIe transfer savings (discrete GPUs benefit here)
+2. 64-byte Matrix per entity vs ~80 bytes for rlgl vertices (similar bandwidth)
+3. bottleneck is memory bandwidth, not draw call overhead
+4. rlgl batching already minimizes draw calls effectively
+
+conclusion: for integrated graphics, rlgl quad batching is already near-optimal.
+GPU instancing shines on discrete GPUs where PCIe transfer is the bottleneck.
+keep both paths available for testing on different hardware.
+
+---
+
+optimization 5: SSBO instance data
+----------------------------------
+technique: pack entity data into 12-byte struct (x, y, color), upload via SSBO
+code: ssbo_renderer.zig, shaders/entity.vert, shaders/entity.frag
+version: ssbo branch
+
+struct GpuEntity {
+    x: f32,      // 4 bytes
+    y: f32,      // 4 bytes
+    color: u32,  // 4 bytes (0xRRGGBB)
+};              // = 12 bytes total
+
+vs GPU instancing: 64-byte Matrix per entity
+vs rlgl batching: ~80 bytes per entity (4 vertices * 5 floats * 4 bytes)
+
+benchmark_ssbo.log results (i5-6500T / HD 530):
+- 200k entities: 16.7ms (60fps)
+- 350k entities: 16.7ms (60fps)
+- 450k entities: 16.7ms (60fps)
+- 550k entities: 16.7ms (60fps)
+- 700k entities: 16.7ms (60fps)
+- 950k entities: 17.5-18.9ms (~53-57fps, benchmark exit)
+
+comparison to previous optimizations on same hardware:
+- 0.3.1 (batch buffer): 60fps @ ~140k entities
+- 0.4.0 (GPU instancing): 60fps @ ~150k entities
+- SSBO: 60fps @ ~700k entities
+- ~5x improvement over previous best!
+
+analysis: SSBO massively reduces per-entity bandwidth:
+- 12 bytes vs 64 bytes (matrices) = 5.3x less data
+- 12 bytes vs 80 bytes (rlgl) = 6.7x less data
+- single instanced draw call, no CPU-side transform calculations
+- shader does NDC conversion and color unpacking on GPU
+
+gotcha found: raylib's rlSetUniformSampler() doesn't work with custom GL code.
+use rlSetUniform() with RL_SHADER_UNIFORM_INT instead.
+see docs/raylib_rlSetUniformSampler_bug.md for details.
+
+total improvement from baseline:
+- baseline: 60fps @ ~5k entities (individual drawCircle)
+- SSBO: 60fps @ ~700k entities
+- ~140x improvement overall!
 
