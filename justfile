@@ -50,9 +50,9 @@ bench:
 # software-rendered benchmark (for CI/headless servers)
 [linux]
 bench-sw:
-    zig build -Doptimize=ReleaseFast
-    xvfb-run -a ./zig-out/bin/sandbox --bench
-    cat benchmark.log
+    @zig build -Doptimize=ReleaseFast
+    @xvfb-run -a ./zig-out/bin/sandbox --bench > /dev/null
+    @cat benchmark.log
 
 [windows]
 bench-sw:
