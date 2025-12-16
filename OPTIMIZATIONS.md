@@ -4,9 +4,9 @@ organized by performance goal. see journal.txt for detailed benchmarks.
 
 ## current ceiling
 
-- **100k entities @ 60fps** (AMD Radeon)
-- **50k entities @ 60fps** (i5-6500T integrated)
-- bottleneck: GPU-bound (update loop stays <1ms even at 100k)
+- **~150k entities @ 60fps** (i5-6500T / HD 530 integrated)
+- **~260k entities @ 60fps** (AMD Radeon discrete)
+- bottleneck: GPU-bound (update loop stays <1ms even at 200k+)
 
 ---
 
@@ -34,6 +34,25 @@ organized by performance goal. see journal.txt for detailed benchmarks.
 - improvement: **2x** over texture blitting, **20x** total
 - why it works: eliminates per-call overhead, vertices go straight to GPU buffer
 
+#### optimization 3: increased batch buffer
+
+- technique: increase raylib batch buffer from 8192 to 32768 vertices
+- result: ~140k entities @ 60fps (i5-6500T)
+- improvement: **~40%** over default buffer
+- why it works: fewer GPU flushes per frame
+
+#### optimization 4: GPU instancing (tested, minimal gain)
+
+- technique: `drawMeshInstanced()` with per-entity transform matrices
+- result: ~150k entities @ 60fps (i5-6500T) - similar to rlgl batching
+- improvement: **negligible** on integrated graphics
+- why it didn't help:
+  - integrated GPU shares system RAM (no PCIe transfer savings)
+  - 64-byte Matrix per entity vs ~80 bytes for rlgl vertices (similar bandwidth)
+  - bottleneck is memory bandwidth, not draw call overhead
+  - rlgl batching already minimizes draw calls effectively
+- note: may help more on discrete GPUs with dedicated VRAM
+
 ---
 
 ## future optimizations
@@ -42,12 +61,12 @@ organized by performance goal. see journal.txt for detailed benchmarks.
 
 these target the rendering bottleneck since update loop is already fast.
 
-| technique              | description                                                          | expected gain |
-| ---------------------- | -------------------------------------------------------------------- | ------------- |
-| increase batch buffer  | raylib default is 8192 vertices (2048 quads). larger = fewer flushes | moderate      |
-| GPU instancing         | single draw call for all entities, GPU handles transforms            | significant   |
-| compute shader updates | move entity positions to GPU entirely                                | significant   |
-| OpenGL vs Vulkan       | test raylib's Vulkan backend                                         | unknown       |
+| technique              | description                                                          | expected gain                   |
+| ---------------------- | -------------------------------------------------------------------- | ------------------------------- |
+| SSBO instance data     | pack (x, y, color) = 12 bytes instead of 64-byte matrices            | moderate (less bandwidth)       |
+| compute shader updates | move entity positions to GPU entirely, avoid CPU→GPU sync            | significant                     |
+| OpenGL vs Vulkan       | test raylib's Vulkan backend                                         | unknown                         |
+| discrete GPU testing   | test on dedicated GPU where instancing/SSBO shine                    | significant (different hw)      |
 
 #### rendering culling
 
