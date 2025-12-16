@@ -444,4 +444,9 @@ fn handleInput(entities: *sandbox.Entities, rng: *std.Random, paused: *bool) voi
     if (rl.isKeyPressed(.space)) {
         paused.* = !paused.*;
     }
+
+    // toggle ui: tab
+    if (rl.isKeyPressed(.tab)) {
+        ui.show_ui = !ui.show_ui;
+    }
 }

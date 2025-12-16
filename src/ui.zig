@@ -22,10 +22,18 @@ pub const highlight_color = rl.Color.yellow;
 pub const box_bg = rl.Color{ .r = 0, .g = 0, .b = 0, .a = 200 };
 
 // =============================================================================
+// state
+// =============================================================================
+
+pub var show_ui: bool = true;
+
+// =============================================================================
 // drawing functions
 // =============================================================================
 
 pub fn drawMetrics(entities: *const sandbox.Entities, update_us: i64, render_us: i64, paused: bool, font: rl.Font) void {
+    if (!show_ui) return;
+
     var buf: [256]u8 = undefined;
 
     // fps box (above metrics)
@@ -75,7 +83,7 @@ pub fn drawMetrics(entities: *const sandbox.Entities, update_us: i64, render_us:
 }
 
 fn drawControls(font: rl.Font, metrics_bottom: i32) void {
-    const ctrl_box_height: i32 = @intFromFloat(small_line_height * 4 + box_padding * 2);
+    const ctrl_box_height: i32 = @intFromFloat(small_line_height * 5 + box_padding * 2);
     const ctrl_box_y: i32 = metrics_bottom + 5;
     rl.drawRectangle(5, ctrl_box_y, 175, ctrl_box_height, box_bg);
 
@@ -86,6 +94,7 @@ fn drawControls(font: rl.Font, metrics_bottom: i32) void {
         "shift +/-: 50k",
         "space: pause",
         "r: reset",
+        "tab: toggle ui",
     };
 
     for (controls) |text| {
