@@ -20,7 +20,7 @@ const TEXTURE_SIZE: i32 = 16; // must be >= 2 * radius
 const MESH_SIZE: f32 = @floatFromInt(TEXTURE_SIZE); // match texture size
 
 // logging thresholds
-const TARGET_FRAME_MS: f32 = 16.7; // 60fps
+const TARGET_FRAME_MS: f32 = 8.33; // 120fps
 const THRESHOLD_MARGIN: f32 = 2.0; // hysteresis margin to avoid bounce
 const JUMP_THRESHOLD_MS: f32 = 5.0; // log if frame time jumps by this much
 const HEARTBEAT_INTERVAL: f32 = 10.0; // seconds between periodic logs
@@ -156,6 +156,7 @@ pub fn main() !void {
     var bench_mode = false;
     var use_instancing = false;
     var use_ssbo = true;
+    var use_vsync = false;
     var args = try std.process.argsWithAllocator(std.heap.page_allocator);
     defer args.deinit();
     _ = args.skip(); // skip program name
@@ -167,12 +168,16 @@ pub fn main() !void {
             use_ssbo = false; // legacy GPU instancing path
         } else if (std.mem.eql(u8, arg, "--legacy")) {
             use_ssbo = false; // legacy rlgl batched path
+        } else if (std.mem.eql(u8, arg, "--vsync")) {
+            use_vsync = true;
         }
     }
 
+    if (use_vsync) {
+        rl.setConfigFlags(.{ .vsync_hint = true });
+    }
     rl.initWindow(@intCast(SCREEN_WIDTH), @intCast(SCREEN_HEIGHT), "lofivor sandbox");
     defer rl.closeWindow();
-    rl.setTargetFPS(60);
 
     // use larger batch buffer: 16384 elements vs default 8192
     // fewer flushes = less driver overhead per frame
