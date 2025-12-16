@@ -8,6 +8,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
         .linux_display_backend = .X11,
+        .opengl_version = .gl_4_3,
     });
 
     // sandbox executable

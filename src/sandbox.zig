@@ -286,3 +286,35 @@ test "update respawns entity at edge when reaching center" {
 
     try std.testing.expect(on_left or on_right or on_top or on_bottom);
 }
+
+// GPU entity for SSBO rendering (position + color only, no velocity)
+pub const GpuEntity = extern struct {
+    x: f32,
+    y: f32,
+    color: u32,
+};
+
+test "GpuEntity struct has correct size for SSBO" {
+    // SSBO layout: x(4) + y(4) + color(4) = 12 bytes
+    try std.testing.expectEqual(@as(usize, 12), @sizeOf(GpuEntity));
+}
+
+test "GpuEntity can be created from Entity" {
+    const entity = Entity{
+        .x = 100.0,
+        .y = 200.0,
+        .vx = 1.5, // ignored for GPU
+        .vy = -0.5, // ignored for GPU
+        .color = 0x00FFFF,
+    };
+
+    const gpu_entity = GpuEntity{
+        .x = entity.x,
+        .y = entity.y,
+        .color = entity.color,
+    };
+
+    try std.testing.expectEqual(@as(f32, 100.0), gpu_entity.x);
+    try std.testing.expectEqual(@as(f32, 200.0), gpu_entity.y);
+    try std.testing.expectEqual(@as(u32, 0x00FFFF), gpu_entity.color);
+}

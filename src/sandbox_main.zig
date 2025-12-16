@@ -5,6 +5,7 @@ const std = @import("std");
 const rl = @import("raylib");
 const sandbox = @import("sandbox.zig");
 const ui = @import("ui.zig");
+const SsboRenderer = @import("ssbo_renderer.zig").SsboRenderer;
 
 const SCREEN_WIDTH = sandbox.SCREEN_WIDTH;
 const SCREEN_HEIGHT = sandbox.SCREEN_HEIGHT;
@@ -26,7 +27,7 @@ const HEARTBEAT_INTERVAL: f32 = 10.0; // seconds between periodic logs
 
 // auto-benchmark settings
 const BENCH_RAMP_INTERVAL: f32 = 2.0; // seconds between entity ramps
-const BENCH_RAMP_AMOUNT: usize = 10_000; // entities added per ramp
+const BENCH_RAMP_AMOUNT: usize = 50_000; // entities added per ramp
 const BENCH_EXIT_THRESHOLD_MS: f32 = 25.0; // exit when frame time exceeds this
 const BENCH_EXIT_SUSTAIN: f32 = 1.0; // must stay above threshold for this long
 
@@ -154,14 +155,19 @@ pub fn main() !void {
     // parse args
     var bench_mode = false;
     var use_instancing = false;
+    var use_ssbo = false;
     var args = try std.process.argsWithAllocator(std.heap.page_allocator);
     defer args.deinit();
     _ = args.skip(); // skip program name
     while (args.next()) |arg| {
         if (std.mem.eql(u8, arg, "--bench")) {
             bench_mode = true;
+            use_ssbo = true; // bench mode uses SSBO by default
         } else if (std.mem.eql(u8, arg, "--gpu")) {
             use_instancing = true;
+            use_ssbo = false; // explicit --gpu overrides SSBO
+        } else if (std.mem.eql(u8, arg, "--ssbo")) {
+            use_ssbo = true;
         }
     }
 
@@ -219,6 +225,21 @@ pub fn main() !void {
         if (quad_mesh) |*m| rl.unloadMesh(m.*);
         if (instance_material) |mat| mat.unload();
         if (transforms) |t| std.heap.page_allocator.free(t);
+    }
+
+    // SSBO rendering setup (only if --ssbo flag)
+    var ssbo_renderer: ?SsboRenderer = null;
+
+    if (use_ssbo) {
+        ssbo_renderer = SsboRenderer.init(circle_texture) orelse {
+            std.debug.print("failed to initialize SSBO renderer\n", .{});
+            return;
+        };
+        std.debug.print("SSBO instancing mode enabled\n", .{});
+    }
+
+    defer {
+        if (ssbo_renderer) |*r| r.deinit();
     }
 
     // load UI font (embedded)
@@ -301,8 +322,11 @@ pub fn main() !void {
         rl.beginDrawing();
         rl.clearBackground(BG_COLOR);
 
-        if (use_instancing) {
-            // GPU instancing path
+        if (use_ssbo) {
+            // SSBO instanced rendering path (12 bytes per entity)
+            ssbo_renderer.?.render(&entities);
+        } else if (use_instancing) {
+            // GPU instancing path (64 bytes per entity)
             const xforms = transforms.?;
             // fill transforms array with entity positions
             for (entities.items[0..entities.count], 0..) |entity, i| {
