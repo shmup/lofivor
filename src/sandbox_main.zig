@@ -179,6 +179,11 @@ pub fn main() !void {
     rl.initWindow(@intCast(SCREEN_WIDTH), @intCast(SCREEN_HEIGHT), "lofivor sandbox");
     defer rl.closeWindow();
 
+    // show background immediately (avoid black screen during init)
+    rl.beginDrawing();
+    rl.clearBackground(BG_COLOR);
+    rl.endDrawing();
+
     // use larger batch buffer: 16384 elements vs default 8192
     // fewer flushes = less driver overhead per frame
     const numElements: i32 = 8192 * 4; // quads = 4 verts
