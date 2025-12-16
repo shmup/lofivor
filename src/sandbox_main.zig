@@ -191,10 +191,14 @@ pub fn main() !void {
     var instance_material: ?rl.Material = null;
     var ortho_camera: rl.Camera3D = undefined;
 
-    // static buffer for transforms - allocated once, reused each frame
-    var transforms: [sandbox.MAX_ENTITIES]rl.Matrix = undefined;
+    // heap-allocated transforms buffer (64MB is too big for stack)
+    var transforms: ?[]rl.Matrix = null;
 
     if (use_instancing) {
+        transforms = std.heap.page_allocator.alloc(rl.Matrix, sandbox.MAX_ENTITIES) catch {
+            std.debug.print("failed to allocate transforms buffer\n", .{});
+            return;
+        };
         // create quad mesh (XZ plane, will view from above)
         quad_mesh = rl.genMeshPlane(MESH_SIZE, MESH_SIZE, 1, 1);
         rl.uploadMesh(&quad_mesh.?, false); // upload to GPU
@@ -214,6 +218,7 @@ pub fn main() !void {
     defer {
         if (quad_mesh) |*m| rl.unloadMesh(m.*);
         if (instance_material) |mat| mat.unload();
+        if (transforms) |t| std.heap.page_allocator.free(t);
     }
 
     // load UI font (embedded)
@@ -298,15 +303,16 @@ pub fn main() !void {
 
         if (use_instancing) {
             // GPU instancing path
+            const xforms = transforms.?;
             // fill transforms array with entity positions
             for (entities.items[0..entities.count], 0..) |entity, i| {
                 // entity (x, y) maps to 3D (x, 0, y) on XZ plane
-                transforms[i] = rl.Matrix.translate(entity.x, 0, entity.y);
+                xforms[i] = rl.Matrix.translate(entity.x, 0, entity.y);
             }
 
             // draw all entities with single instanced call
             ortho_camera.begin();
-            rl.drawMeshInstanced(quad_mesh.?, instance_material.?, transforms[0..entities.count]);
+            rl.drawMeshInstanced(quad_mesh.?, instance_material.?, xforms[0..entities.count]);
             ortho_camera.end();
         } else {
             // rlgl quad batching path (original)
