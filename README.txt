@@ -4,6 +4,8 @@ lofivor
 sandbox stress test for measuring entity rendering performance on weak hardware.
 written in zig with raylib.
 
+(lofivor aka lofi-survivor)
+
 build & run
 -----------
 
