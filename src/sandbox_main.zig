@@ -16,6 +16,7 @@ const CYAN = rl.Color{ .r = 0, .g = 255, .b = 255, .a = 255 };
 // entity rendering
 const ENTITY_RADIUS: f32 = 4.0;
 const TEXTURE_SIZE: i32 = 16; // must be >= 2 * radius
+const MESH_SIZE: f32 = @floatFromInt(TEXTURE_SIZE); // match texture size
 
 // logging thresholds
 const TARGET_FRAME_MS: f32 = 16.7; // 60fps
@@ -129,15 +130,38 @@ fn createCircleTexture() ?rl.Texture2D {
     return target.texture;
 }
 
+fn createOrthoCamera() rl.Camera3D {
+    // orthographic camera looking down -Y axis at XZ plane
+    // positioned to match 2D screen coordinates
+    const hw = @as(f32, @floatFromInt(SCREEN_WIDTH)) / 2.0;
+    const hh = @as(f32, @floatFromInt(SCREEN_HEIGHT)) / 2.0;
+    return .{
+        .position = .{ .x = hw, .y = 1000, .z = hh },
+        .target = .{ .x = hw, .y = 0, .z = hh },
+        .up = .{ .x = 0, .y = 0, .z = -1 }, // -Z is up to match screen Y
+        .fovy = @floatFromInt(SCREEN_HEIGHT), // ortho uses fovy as height
+        .projection = .orthographic,
+    };
+}
+
+fn createInstanceMaterial(texture: rl.Texture2D) ?rl.Material {
+    var material = rl.loadMaterialDefault() catch return null;
+    rl.setMaterialTexture(&material, rl.MATERIAL_MAP_DIFFUSE, texture);
+    return material;
+}
+
 pub fn main() !void {
     // parse args
     var bench_mode = false;
+    var use_instancing = false;
     var args = try std.process.argsWithAllocator(std.heap.page_allocator);
     defer args.deinit();
     _ = args.skip(); // skip program name
     while (args.next()) |arg| {
         if (std.mem.eql(u8, arg, "--bench")) {
             bench_mode = true;
+        } else if (std.mem.eql(u8, arg, "--gpu")) {
+            use_instancing = true;
         }
     }
 
@@ -161,6 +185,36 @@ pub fn main() !void {
         return;
     };
     defer rl.unloadTexture(circle_texture);
+
+    // GPU instancing setup (only if --gpu flag)
+    var quad_mesh: ?rl.Mesh = null;
+    var instance_material: ?rl.Material = null;
+    var ortho_camera: rl.Camera3D = undefined;
+
+    // static buffer for transforms - allocated once, reused each frame
+    var transforms: [sandbox.MAX_ENTITIES]rl.Matrix = undefined;
+
+    if (use_instancing) {
+        // create quad mesh (XZ plane, will view from above)
+        quad_mesh = rl.genMeshPlane(MESH_SIZE, MESH_SIZE, 1, 1);
+        rl.uploadMesh(&quad_mesh.?, false); // upload to GPU
+
+        // material with circle texture
+        instance_material = createInstanceMaterial(circle_texture) orelse {
+            std.debug.print("failed to create instance material\n", .{});
+            return;
+        };
+
+        // orthographic camera for 2D-like rendering
+        ortho_camera = createOrthoCamera();
+
+        std.debug.print("GPU instancing mode enabled\n", .{});
+    }
+
+    defer {
+        if (quad_mesh) |*m| rl.unloadMesh(m.*);
+        if (instance_material) |mat| mat.unload();
+    }
 
     // load UI font (embedded)
     const font_data = @embedFile("verdanab.ttf");
@@ -242,38 +296,52 @@ pub fn main() !void {
         rl.beginDrawing();
         rl.clearBackground(BG_COLOR);
 
-        // draw entities using rlgl quad batching
-        const size = @as(f32, @floatFromInt(TEXTURE_SIZE));
-        const half = size / 2.0;
+        if (use_instancing) {
+            // GPU instancing path
+            // fill transforms array with entity positions
+            for (entities.items[0..entities.count], 0..) |entity, i| {
+                // entity (x, y) maps to 3D (x, 0, y) on XZ plane
+                transforms[i] = rl.Matrix.translate(entity.x, 0, entity.y);
+            }
 
-        rl.gl.rlSetTexture(circle_texture.id);
-        rl.gl.rlBegin(rl.gl.rl_quads);
+            // draw all entities with single instanced call
+            ortho_camera.begin();
+            rl.drawMeshInstanced(quad_mesh.?, instance_material.?, transforms[0..entities.count]);
+            ortho_camera.end();
+        } else {
+            // rlgl quad batching path (original)
+            const size = @as(f32, @floatFromInt(TEXTURE_SIZE));
+            const half = size / 2.0;
 
-        for (entities.items[0..entities.count]) |entity| {
-            // extract RGB from entity color (0xRRGGBB)
-            const r: u8 = @truncate(entity.color >> 16);
-            const g: u8 = @truncate(entity.color >> 8);
-            const b: u8 = @truncate(entity.color);
-            rl.gl.rlColor4ub(r, g, b, 255);
+            rl.gl.rlSetTexture(circle_texture.id);
+            rl.gl.rlBegin(rl.gl.rl_quads);
 
-            const x1 = entity.x - half;
-            const y1 = entity.y - half;
-            const x2 = entity.x + half;
-            const y2 = entity.y + half;
+            for (entities.items[0..entities.count]) |entity| {
+                // extract RGB from entity color (0xRRGGBB)
+                const r: u8 = @truncate(entity.color >> 16);
+                const g: u8 = @truncate(entity.color >> 8);
+                const b: u8 = @truncate(entity.color);
+                rl.gl.rlColor4ub(r, g, b, 255);
 
-            // quad vertices: bottom-left, bottom-right, top-right, top-left
-            rl.gl.rlTexCoord2f(0, 0);
-            rl.gl.rlVertex2f(x1, y2);
-            rl.gl.rlTexCoord2f(1, 0);
-            rl.gl.rlVertex2f(x2, y2);
-            rl.gl.rlTexCoord2f(1, 1);
-            rl.gl.rlVertex2f(x2, y1);
-            rl.gl.rlTexCoord2f(0, 1);
-            rl.gl.rlVertex2f(x1, y1);
+                const x1 = entity.x - half;
+                const y1 = entity.y - half;
+                const x2 = entity.x + half;
+                const y2 = entity.y + half;
+
+                // quad vertices: bottom-left, bottom-right, top-right, top-left
+                rl.gl.rlTexCoord2f(0, 0);
+                rl.gl.rlVertex2f(x1, y2);
+                rl.gl.rlTexCoord2f(1, 0);
+                rl.gl.rlVertex2f(x2, y2);
+                rl.gl.rlTexCoord2f(1, 1);
+                rl.gl.rlVertex2f(x2, y1);
+                rl.gl.rlTexCoord2f(0, 1);
+                rl.gl.rlVertex2f(x1, y1);
+            }
+
+            rl.gl.rlEnd();
+            rl.gl.rlSetTexture(0);
         }
-
-        rl.gl.rlEnd();
-        rl.gl.rlSetTexture(0);
 
         // metrics overlay (skip in bench mode for cleaner headless run)
         if (!bench_mode) {
