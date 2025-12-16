@@ -19,6 +19,8 @@ pub const box_padding: f32 = 8;
 pub const text_color = rl.Color.white;
 pub const dim_text_color = rl.Color.gray;
 pub const highlight_color = rl.Color.yellow;
+pub const fps_good_color = rl.Color.green;
+pub const fps_bad_color = rl.Color.red;
 pub const box_bg = rl.Color{ .r = 0, .g = 0, .b = 0, .a = 200 };
 
 // =============================================================================
@@ -41,8 +43,11 @@ pub fn drawMetrics(entities: *const sandbox.Entities, update_us: i64, render_us:
     rl.drawRectangle(5, 5, 180, fps_box_height, box_bg);
     const frame_ms = rl.getFrameTime() * 1000.0;
     const fps = if (frame_ms > 0) 1000.0 / frame_ms else 0;
-    const fps_text = std.fmt.bufPrintZ(&buf, "FPS: {d:.0}", .{fps}) catch "?";
-    rl.drawTextEx(font, fps_text, .{ .x = padding, .y = padding }, font_size, 0, text_color);
+    rl.drawTextEx(font, "FPS: ", .{ .x = padding, .y = padding }, font_size, 0, text_color);
+    const fps_text = std.fmt.bufPrintZ(&buf, "{d:.0}", .{fps}) catch "?";
+    const fps_color = if (fps >= 60.0) fps_good_color else fps_bad_color;
+    const label_width = rl.measureTextEx(font, "FPS: ", font_size, 0).x;
+    rl.drawTextEx(font, fps_text, .{ .x = padding + label_width, .y = padding }, font_size, 0, fps_color);
 
     // metrics box (below fps)
     const metrics_y: i32 = 5 + fps_box_height + 5;
