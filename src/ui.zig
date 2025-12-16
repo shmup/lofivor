@@ -135,7 +135,7 @@ fn drawControls(font: rl.Font, metrics_bottom: i32) void {
         "scroll: zoom",
         "drag: pan (zoomed)",
         "space: pause, r: reset",
-        "enter: reset zoom",
+        "q: zoom out / quit",
         "tab: toggle ui",
     };
 

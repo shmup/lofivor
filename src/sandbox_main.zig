@@ -326,7 +326,7 @@ pub fn main() !void {
         } else {
             // manual controls
             handleInput(&entities, &rng, &paused);
-            handleCamera(&zoom, &pan);
+            if (handleCamera(&zoom, &pan)) break;
         }
 
         // update
@@ -468,7 +468,7 @@ fn handleInput(entities: *sandbox.Entities, rng: *std.Random, paused: *bool) voi
     }
 }
 
-fn handleCamera(zoom: *f32, pan: *@Vector(2, f32)) void {
+fn handleCamera(zoom: *f32, pan: *@Vector(2, f32)) bool {
     const wheel = rl.getMouseWheelMove();
 
     if (wheel != 0) {
@@ -510,11 +510,23 @@ fn handleCamera(zoom: *f32, pan: *@Vector(2, f32)) void {
         }
     }
 
-    // reset on Return
-    if (rl.isKeyPressed(.enter)) {
+    // reset on Return or Enter
+    if (rl.isKeyPressed(.enter) or rl.isKeyPressed(.kp_enter)) {
         zoom.* = 1.0;
         pan.* = @Vector(2, f32){ 0, 0 };
     }
+
+    // q: reset zoom if zoomed in, otherwise quit
+    if (rl.isKeyPressed(.q)) {
+        if (zoom.* > 1.0) {
+            zoom.* = 1.0;
+            pan.* = @Vector(2, f32){ 0, 0 };
+        } else {
+            return true; // signal to quit
+        }
+    }
+
+    return false;
 }
 
 fn clampPan(pan: *@Vector(2, f32), zoom: f32) void {
