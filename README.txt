@@ -12,8 +12,8 @@ build & run
 controls
 --------
 
-    +/-      add/remove 1000 entities
-    shift    hold for 10x (10000 entities)
+    +/-      add/remove 10k entities
+    shift    hold for 50k
     space    pause/resume
     r        reset
 

@@ -397,7 +397,7 @@ var sub_timer: f32 = 0;
 fn handleInput(entities: *sandbox.Entities, rng: *std.Random, paused: *bool) void {
     const dt = rl.getFrameTime();
     const shift = rl.isKeyDown(.left_shift) or rl.isKeyDown(.right_shift);
-    const add_count: usize = if (shift) 10000 else 1000;
+    const add_count: usize = if (shift) 50_000 else 10_000;
 
     const add_held = rl.isKeyDown(.equal) or rl.isKeyDown(.kp_add);
     const sub_held = rl.isKeyDown(.minus) or rl.isKeyDown(.kp_subtract);

@@ -82,8 +82,8 @@ fn drawControls(font: rl.Font, metrics_bottom: i32) void {
     var y: f32 = @as(f32, @floatFromInt(ctrl_box_y)) + box_padding;
 
     const controls = [_][]const u8{
-        "+/-: 1000 entities",
-        "shift +/-: 10000",
+        "+/-: 10k entities",
+        "shift +/-: 50k",
         "space: pause",
         "r: reset",
     };
