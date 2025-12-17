@@ -59,7 +59,7 @@ further options (if needed):
 - [x] increase raylib batch buffer (currently 8192 vertices = 2048 quads)
 - [x] GPU instancing (single draw call for all entities)
 - [x] SSBO instance data (12 bytes vs 64-byte matrices)
-- [ ] compute shader entity updates (if raylib supports)
+- [x] compute shader entity updates (raylib supports via rlgl)
 - [ ] compare OpenGL vs Vulkan backend
 
 findings (i5-6500T / HD 530):
@@ -68,6 +68,7 @@ findings (i5-6500T / HD 530):
 - instancing doesn't help on integrated graphics (shared RAM, no PCIe savings)
 - bottleneck is memory bandwidth, not draw call overhead
 - rlgl batching is already near-optimal for this hardware
+- compute shaders: update time ~5ms → ~0ms at 150k entities (CPU freed entirely)
 
 ## future optimization concepts
 
