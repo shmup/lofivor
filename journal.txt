@@ -206,3 +206,38 @@ total improvement from baseline:
 - SSBO: 60fps @ ~700k entities
 - ~140x improvement overall!
 
+---
+
+optimization 6: compute shader updates
+--------------------------------------
+technique: move entity position + respawn logic from CPU to GPU compute shader
+code: compute.zig, shaders/entity_update.comp, ssbo_renderer.zig
+version: 0.7.0
+
+struct GpuEntity {
+    x: f32,        // 4 bytes
+    y: f32,        // 4 bytes
+    packed_vel: i32, // 4 bytes (vx/vy in fixed-point 8.8)
+    color: u32,    // 4 bytes
+};                 // = 16 bytes total (was 12)
+
+changes:
+- entity_update.comp: position update, center check, edge respawn, velocity calc
+- GPU RNG: PCG-style PRNG seeded with entity id + frame number
+- ssbo_renderer: renderComputeMode() only uploads NEW entities (when count grows)
+- CPU update loop skipped entirely when compute enabled
+
+benchmark results (i5-6500T / HD 530):
+- update time: ~5ms → ~0ms at 150k entities
+- render time unchanged (GPU-bound as before)
+- total frame time improvement at high entity counts
+
+analysis: CPU was doing ~150k position updates + distance checks + respawn logic
+per frame. now GPU does it in parallel via 256-thread workgroups. CPU only uploads
+new entities when user adds them, not per-frame. memory barrier ensures compute
+writes visible to vertex shader before draw.
+
+flags:
+- --compute: GPU compute updates (now default)
+- --cpu: fallback to CPU update path for comparison
+

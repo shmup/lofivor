@@ -42,9 +42,18 @@ check:
 test:
     zig build test
 
+# run sandbox (GPU compute is default)
+sandbox:
+    zig build -Doptimize=ReleaseFast run
+
 # auto-benchmark (ramps entities until performance degrades)
 bench:
     zig build -Doptimize=ReleaseFast run -- --bench
+    cat benchmark.log
+
+# benchmark with CPU update path (for comparison)
+bench-cpu:
+    zig build -Doptimize=ReleaseFast run -- --bench --cpu
     cat benchmark.log
 
 # software-rendered benchmark (for CI/headless servers)

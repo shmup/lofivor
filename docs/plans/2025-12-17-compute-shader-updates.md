@@ -141,10 +141,10 @@ each step is a commit point if desired.
 - implement edge spawning + velocity calculation
 - remove CPU update loop from sandbox.zig
 
-### step 4: cleanup
-- remove dead code (cpu update, per-frame upload)
-- add `--compute` flag to toggle (keep old path for comparison)
-- benchmark and document results
+### step 4: cleanup ✓
+- `--compute` is now default, `--cpu` flag for fallback/comparison
+- justfile updated: `just bench` (compute), `just bench-cpu` (comparison)
+- verbose debug output reduced
 
 ## files changed
 

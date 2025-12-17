@@ -164,7 +164,7 @@ pub fn main() !void {
     var use_instancing = false;
     var use_ssbo = true;
     var use_vsync = false;
-    var use_compute = false;
+    var use_compute = true; // GPU compute is now default
     var args = try std.process.argsWithAllocator(std.heap.page_allocator);
     defer args.deinit();
     _ = args.skip(); // skip program name
@@ -178,8 +178,8 @@ pub fn main() !void {
             use_ssbo = false; // legacy rlgl batched path
         } else if (std.mem.eql(u8, arg, "--vsync")) {
             use_vsync = true;
-        } else if (std.mem.eql(u8, arg, "--compute")) {
-            use_compute = true;
+        } else if (std.mem.eql(u8, arg, "--cpu")) {
+            use_compute = false; // fallback to CPU update path
         }
     }
 

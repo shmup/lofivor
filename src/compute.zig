@@ -50,15 +50,7 @@ pub const ComputeShader = struct {
         const respawn_radius_loc = rl.gl.rlGetLocationUniform(program_id, "respawnRadius");
         const entity_speed_loc = rl.gl.rlGetLocationUniform(program_id, "entitySpeed");
 
-        std.debug.print("compute: shader loaded (program_id={}, uniforms: count={}, frame={}, screen={}, center={}, radius={}, speed={})\n", .{
-            program_id,
-            entity_count_loc,
-            frame_number_loc,
-            screen_size_loc,
-            center_loc,
-            respawn_radius_loc,
-            entity_speed_loc,
-        });
+        std.debug.print("compute: shader loaded\n", .{});
 
         return .{
             .program_id = program_id,
