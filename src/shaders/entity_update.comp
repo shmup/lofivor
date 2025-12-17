@@ -14,6 +14,29 @@ layout(std430, binding = 0) buffer Entities {
 };
 
 uniform uint entityCount;
+uniform uint frameNumber;
+uniform vec2 screenSize;
+uniform vec2 center;
+uniform float respawnRadius;
+uniform float entitySpeed;
+
+// PCG-style GPU RNG - returns value in [0, 1)
+uint pcg(inout uint state) {
+    state = state * 747796405u + 2891336453u;
+    uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+    return (word >> 22u) ^ word;
+}
+
+float randFloat(inout uint state) {
+    return float(pcg(state)) / 4294967296.0;
+}
+
+// pack velocity into fixed-point 8.8 format
+int packVelocity(float vx, float vy) {
+    int vx_fixed = int(clamp(vx * 256.0, -32768.0, 32767.0));
+    int vy_fixed = int(clamp(vy * 256.0, -32768.0, 32767.0));
+    return (vx_fixed << 16) | (vy_fixed & 0xFFFF);
+}
 
 void main() {
     uint id = gl_GlobalInvocationID.x;
@@ -28,6 +51,47 @@ void main() {
     // update position
     e.x += vx;
     e.y += vy;
+
+    // check if reached center - respawn at edge
+    float dx = e.x - center.x;
+    float dy = e.y - center.y;
+    if (dx*dx + dy*dy < respawnRadius * respawnRadius) {
+        // init RNG with entity id and frame number
+        uint rng = id * 1103515245u + frameNumber * 12345u + 1u;
+
+        // pick random edge: 0=top, 1=bottom, 2=left, 3=right
+        uint edge = pcg(rng) & 3u;
+        float t = randFloat(rng);
+
+        // spawn on edge
+        if (edge == 0u) {  // top
+            e.x = t * screenSize.x;
+            e.y = 0.0;
+        } else if (edge == 1u) {  // bottom
+            e.x = t * screenSize.x;
+            e.y = screenSize.y;
+        } else if (edge == 2u) {  // left
+            e.x = 0.0;
+            e.y = t * screenSize.y;
+        } else {  // right
+            e.x = screenSize.x;
+            e.y = t * screenSize.y;
+        }
+
+        // velocity toward center
+        dx = center.x - e.x;
+        dy = center.y - e.y;
+        float dist = sqrt(dx*dx + dy*dy);
+        vx = (dx / dist) * entitySpeed;
+        vy = (dy / dist) * entitySpeed;
+        e.packedVel = packVelocity(vx, vy);
+
+        // new random color
+        uint r = pcg(rng) & 0xFFu;
+        uint g = pcg(rng) & 0xFFu;
+        uint b = pcg(rng) & 0xFFu;
+        e.color = (r << 16u) | (g << 8u) | b;
+    }
 
     entities[id] = e;
 }

@@ -306,6 +306,7 @@ pub fn main() !void {
     var update_time_us: i64 = 0;
     var render_time_us: i64 = 0;
     var elapsed: f32 = 0;
+    var frame_number: u32 = 0;
 
     // auto-benchmark state
     var last_ramp_time: f32 = 0;
@@ -360,14 +361,11 @@ pub fn main() !void {
             defer tracy_update.End();
             const update_start = std.time.microTimestamp();
 
-            if (compute_shader != null) {
-                // GPU compute update - positions updated on GPU
-                // still need CPU update for respawn logic until Step 3
-                sandbox.update(&entities, &rng);
-            } else {
-                // CPU update path
+            if (compute_shader == null) {
+                // CPU update path (positions + respawn)
                 sandbox.update(&entities, &rng);
             }
+            // GPU compute path handles update in render section before draw
 
             update_time_us = std.time.microTimestamp() - update_start;
         }
@@ -383,13 +381,18 @@ pub fn main() !void {
         if (use_ssbo) {
             // dispatch compute shader before render (if enabled)
             if (compute_shader) |*cs| {
-                const tracy_compute = ztracy.ZoneN(@src(), "compute_dispatch");
-                defer tracy_compute.End();
-                cs.dispatch(ssbo_renderer.?.ssbo_id, @intCast(entities.count));
+                if (!paused) {
+                    const tracy_compute = ztracy.ZoneN(@src(), "compute_dispatch");
+                    defer tracy_compute.End();
+                    cs.dispatch(ssbo_renderer.?.ssbo_id, @intCast(entities.count), frame_number);
+                    frame_number +%= 1;
+                }
+                // GPU compute mode - only upload new entities, positions updated on GPU
+                ssbo_renderer.?.renderComputeMode(&entities, zoom, pan);
+            } else {
+                // CPU mode - upload entity data to GPU
+                ssbo_renderer.?.render(&entities, zoom, pan);
             }
-
-            // SSBO instanced rendering path (16 bytes per entity)
-            ssbo_renderer.?.render(&entities, zoom, pan);
         } else if (use_instancing) {
             // GPU instancing path (64 bytes per entity)
             const xforms = transforms.?;

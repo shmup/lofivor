@@ -24,6 +24,7 @@ pub const SsboRenderer = struct {
     pan_loc: i32,
     circle_texture_id: u32,
     gpu_buffer: []sandbox.GpuEntity,
+    last_entity_count: usize, // track count to detect when entities are added
 
     const QUAD_SIZE: f32 = 16.0;
 
@@ -125,6 +126,7 @@ pub const SsboRenderer = struct {
             .pan_loc = pan_loc,
             .circle_texture_id = circle_texture.id,
             .gpu_buffer = gpu_buffer,
+            .last_entity_count = 0,
         };
     }
 
@@ -137,16 +139,22 @@ pub const SsboRenderer = struct {
     }
 
     pub fn render(self: *SsboRenderer, entities: *const sandbox.Entities, zoom: f32, pan: @Vector(2, f32)) void {
+        self.renderInternal(entities, zoom, pan, false);
+    }
+
+    pub fn renderComputeMode(self: *SsboRenderer, entities: *const sandbox.Entities, zoom: f32, pan: @Vector(2, f32)) void {
         if (entities.count == 0) return;
 
         // flush raylib's internal render batch before our custom GL calls
         rl.gl.rlDrawRenderBatchActive();
 
-        // copy entity data to GPU buffer (position + packed velocity + color)
-        {
-            const zone = ztracy.ZoneN(@src(), "ssbo_copy");
+        // upload NEW entities when count increases (entities added on CPU)
+        if (entities.count > self.last_entity_count) {
+            const zone = ztracy.ZoneN(@src(), "ssbo_upload_new");
             defer zone.End();
-            for (entities.items[0..entities.count], 0..) |entity, i| {
+
+            // copy new entities to GPU buffer
+            for (entities.items[self.last_entity_count..entities.count], self.last_entity_count..) |entity, i| {
                 self.gpu_buffer[i] = .{
                     .x = entity.x,
                     .y = entity.y,
@@ -154,16 +162,56 @@ pub const SsboRenderer = struct {
                     .color = entity.color,
                 };
             }
+
+            // upload only the new portion to SSBO
+            const offset: u32 = @intCast(self.last_entity_count * @sizeOf(sandbox.GpuEntity));
+            const new_count = entities.count - self.last_entity_count;
+            const data_size: u32 = @intCast(new_count * @sizeOf(sandbox.GpuEntity));
+            rl.gl.rlUpdateShaderBuffer(self.ssbo_id, &self.gpu_buffer[self.last_entity_count], data_size, offset);
+
+            self.last_entity_count = entities.count;
+        } else if (entities.count < self.last_entity_count) {
+            // entities were removed, update count
+            self.last_entity_count = entities.count;
         }
 
-        // upload to SSBO
-        {
-            const zone = ztracy.ZoneN(@src(), "ssbo_upload");
-            defer zone.End();
-            const data_size: u32 = @intCast(entities.count * @sizeOf(sandbox.GpuEntity));
-            rl.gl.rlUpdateShaderBuffer(self.ssbo_id, self.gpu_buffer.ptr, data_size, 0);
+        self.drawInstanced(entities.count, zoom, pan);
+    }
+
+    fn renderInternal(self: *SsboRenderer, entities: *const sandbox.Entities, zoom: f32, pan: @Vector(2, f32), skip_upload: bool) void {
+        if (entities.count == 0) return;
+
+        // flush raylib's internal render batch before our custom GL calls
+        rl.gl.rlDrawRenderBatchActive();
+
+        if (!skip_upload) {
+            // copy entity data to GPU buffer (position + packed velocity + color)
+            {
+                const zone = ztracy.ZoneN(@src(), "ssbo_copy");
+                defer zone.End();
+                for (entities.items[0..entities.count], 0..) |entity, i| {
+                    self.gpu_buffer[i] = .{
+                        .x = entity.x,
+                        .y = entity.y,
+                        .packed_vel = sandbox.packVelocity(entity.vx, entity.vy),
+                        .color = entity.color,
+                    };
+                }
+            }
+
+            // upload to SSBO
+            {
+                const zone = ztracy.ZoneN(@src(), "ssbo_upload");
+                defer zone.End();
+                const data_size: u32 = @intCast(entities.count * @sizeOf(sandbox.GpuEntity));
+                rl.gl.rlUpdateShaderBuffer(self.ssbo_id, self.gpu_buffer.ptr, data_size, 0);
+            }
         }
 
+        self.drawInstanced(entities.count, zoom, pan);
+    }
+
+    fn drawInstanced(self: *SsboRenderer, entity_count: usize, zoom: f32, pan: @Vector(2, f32)) void {
         // bind shader
         rl.gl.rlEnableShader(self.shader_id);
 
@@ -198,7 +246,7 @@ pub const SsboRenderer = struct {
             defer zone.End();
             _ = rl.gl.rlEnableVertexArray(self.vao_id);
             rl.gl.rlEnableVertexBuffer(self.vbo_id);
-            rl.gl.rlDrawVertexArrayInstanced(0, 6, @intCast(entities.count));
+            rl.gl.rlDrawVertexArrayInstanced(0, 6, @intCast(entity_count));
         }
 
         // cleanup - restore raylib's expected state
