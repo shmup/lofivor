@@ -287,34 +287,69 @@ test "update respawns entity at edge when reaching center" {
     try std.testing.expect(on_left or on_right or on_top or on_bottom);
 }
 
-// GPU entity for SSBO rendering (position + color only, no velocity)
+// GPU entity for SSBO rendering (16 bytes, matches compute shader layout)
 pub const GpuEntity = extern struct {
     x: f32,
     y: f32,
+    packed_vel: i32, // vx high 16 bits, vy low 16 bits (fixed-point 8.8)
     color: u32,
 };
 
+// pack two f32 velocities into a single i32 (fixed-point 8.8 format)
+pub fn packVelocity(vx: f32, vy: f32) i32 {
+    const vx_fixed: i16 = @intFromFloat(std.math.clamp(vx * 256.0, -32768.0, 32767.0));
+    const vy_fixed: i16 = @intFromFloat(std.math.clamp(vy * 256.0, -32768.0, 32767.0));
+    return (@as(i32, vx_fixed) << 16) | (@as(i32, vy_fixed) & 0xFFFF);
+}
+
 test "GpuEntity struct has correct size for SSBO" {
-    // SSBO layout: x(4) + y(4) + color(4) = 12 bytes
-    try std.testing.expectEqual(@as(usize, 12), @sizeOf(GpuEntity));
+    // SSBO layout: x(4) + y(4) + packed_vel(4) + color(4) = 16 bytes
+    try std.testing.expectEqual(@as(usize, 16), @sizeOf(GpuEntity));
 }
 
 test "GpuEntity can be created from Entity" {
     const entity = Entity{
         .x = 100.0,
         .y = 200.0,
-        .vx = 1.5, // ignored for GPU
-        .vy = -0.5, // ignored for GPU
+        .vx = 1.5,
+        .vy = -0.5,
         .color = 0x00FFFF,
     };
 
     const gpu_entity = GpuEntity{
         .x = entity.x,
         .y = entity.y,
+        .packed_vel = packVelocity(entity.vx, entity.vy),
         .color = entity.color,
     };
 
     try std.testing.expectEqual(@as(f32, 100.0), gpu_entity.x);
     try std.testing.expectEqual(@as(f32, 200.0), gpu_entity.y);
     try std.testing.expectEqual(@as(u32, 0x00FFFF), gpu_entity.color);
+
+    // unpack and verify velocity (should round-trip within precision)
+    const vx_unpacked = @as(f32, @floatFromInt(@as(i16, @truncate(gpu_entity.packed_vel >> 16)))) / 256.0;
+    const vy_unpacked = @as(f32, @floatFromInt(@as(i16, @truncate(gpu_entity.packed_vel)))) / 256.0;
+    try std.testing.expectApproxEqAbs(@as(f32, 1.5), vx_unpacked, 0.004);
+    try std.testing.expectApproxEqAbs(@as(f32, -0.5), vy_unpacked, 0.004);
+}
+
+test "packVelocity round-trips correctly" {
+    // test positive values
+    const packed1 = packVelocity(2.0, 1.5);
+    const vx1 = @as(f32, @floatFromInt(@as(i16, @truncate(packed1 >> 16)))) / 256.0;
+    const vy1 = @as(f32, @floatFromInt(@as(i16, @truncate(packed1)))) / 256.0;
+    try std.testing.expectApproxEqAbs(@as(f32, 2.0), vx1, 0.004);
+    try std.testing.expectApproxEqAbs(@as(f32, 1.5), vy1, 0.004);
+
+    // test negative values
+    const packed2 = packVelocity(-1.0, -2.5);
+    const vx2 = @as(f32, @floatFromInt(@as(i16, @truncate(packed2 >> 16)))) / 256.0;
+    const vy2 = @as(f32, @floatFromInt(@as(i16, @truncate(packed2)))) / 256.0;
+    try std.testing.expectApproxEqAbs(@as(f32, -1.0), vx2, 0.004);
+    try std.testing.expectApproxEqAbs(@as(f32, -2.5), vy2, 0.004);
+
+    // test zero
+    const packed3 = packVelocity(0.0, 0.0);
+    try std.testing.expectEqual(@as(i32, 0), packed3);
 }

@@ -4,10 +4,11 @@
 layout(location = 0) in vec2 position;
 layout(location = 1) in vec2 texCoord;
 
-// entity data from SSBO
+// entity data from SSBO (16 bytes, matches compute shader layout)
 struct Entity {
     float x;
     float y;
+    int packedVel;  // vx high 16 bits, vy low 16 bits (fixed-point 8.8), unused in vertex shader
     uint color;
 };
 

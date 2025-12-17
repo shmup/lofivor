@@ -99,7 +99,7 @@ pub const SsboRenderer = struct {
         rl.gl.rlSetVertexAttribute(1, 2, rl.gl.rl_float, false, 4 * @sizeOf(f32), 2 * @sizeOf(f32));
         rl.gl.rlEnableVertexAttribute(1);
 
-        // create SSBO for entity data (12 bytes per entity, 1M entities = 12MB)
+        // create SSBO for entity data (16 bytes per entity, 1M entities = 16MB)
         const ssbo_size: u32 = @intCast(sandbox.MAX_ENTITIES * @sizeOf(sandbox.GpuEntity));
         const ssbo_id = rl.gl.rlLoadShaderBuffer(ssbo_size, null, rl.gl.rl_dynamic_draw);
         if (ssbo_id == 0) {
@@ -142,7 +142,7 @@ pub const SsboRenderer = struct {
         // flush raylib's internal render batch before our custom GL calls
         rl.gl.rlDrawRenderBatchActive();
 
-        // copy entity data to GPU buffer (position + color only)
+        // copy entity data to GPU buffer (position + packed velocity + color)
         {
             const zone = ztracy.ZoneN(@src(), "ssbo_copy");
             defer zone.End();
@@ -150,6 +150,7 @@ pub const SsboRenderer = struct {
                 self.gpu_buffer[i] = .{
                     .x = entity.x,
                     .y = entity.y,
+                    .packed_vel = sandbox.packVelocity(entity.vx, entity.vy),
                     .color = entity.color,
                 };
             }
