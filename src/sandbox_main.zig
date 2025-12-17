@@ -7,6 +7,7 @@ const ztracy = @import("ztracy");
 const sandbox = @import("sandbox.zig");
 const ui = @import("ui.zig");
 const SsboRenderer = @import("ssbo_renderer.zig").SsboRenderer;
+const ComputeShader = @import("compute.zig").ComputeShader;
 
 const SCREEN_WIDTH = sandbox.SCREEN_WIDTH;
 const SCREEN_HEIGHT = sandbox.SCREEN_HEIGHT;
@@ -163,6 +164,7 @@ pub fn main() !void {
     var use_instancing = false;
     var use_ssbo = true;
     var use_vsync = false;
+    var use_compute = false;
     var args = try std.process.argsWithAllocator(std.heap.page_allocator);
     defer args.deinit();
     _ = args.skip(); // skip program name
@@ -176,6 +178,8 @@ pub fn main() !void {
             use_ssbo = false; // legacy rlgl batched path
         } else if (std.mem.eql(u8, arg, "--vsync")) {
             use_vsync = true;
+        } else if (std.mem.eql(u8, arg, "--compute")) {
+            use_compute = true;
         }
     }
 
@@ -257,6 +261,26 @@ pub fn main() !void {
         if (ssbo_renderer) |*r| r.deinit();
     }
 
+    // compute shader setup (only if --compute flag)
+    var compute_shader: ?ComputeShader = null;
+
+    if (use_compute) {
+        if (!use_ssbo) {
+            std.debug.print("--compute requires SSBO mode (default), ignoring\n", .{});
+        } else {
+            compute_shader = ComputeShader.init();
+            if (compute_shader == null) {
+                std.debug.print("failed to initialize compute shader, falling back to CPU\n", .{});
+            } else {
+                std.debug.print("compute shader mode enabled\n", .{});
+            }
+        }
+    }
+
+    defer {
+        if (compute_shader) |*c| c.deinit();
+    }
+
     // load UI font (embedded)
     const font_data = @embedFile("verdanab.ttf");
     const ui_font = rl.loadFontFromMemory(".ttf", font_data, 32, null) catch {
@@ -335,7 +359,16 @@ pub fn main() !void {
             const tracy_update = ztracy.ZoneN(@src(), "update");
             defer tracy_update.End();
             const update_start = std.time.microTimestamp();
-            sandbox.update(&entities, &rng);
+
+            if (compute_shader != null) {
+                // GPU compute update - positions updated on GPU
+                // still need CPU update for respawn logic until Step 3
+                sandbox.update(&entities, &rng);
+            } else {
+                // CPU update path
+                sandbox.update(&entities, &rng);
+            }
+
             update_time_us = std.time.microTimestamp() - update_start;
         }
 
@@ -348,7 +381,14 @@ pub fn main() !void {
         rl.clearBackground(BG_COLOR);
 
         if (use_ssbo) {
-            // SSBO instanced rendering path (12 bytes per entity)
+            // dispatch compute shader before render (if enabled)
+            if (compute_shader) |*cs| {
+                const tracy_compute = ztracy.ZoneN(@src(), "compute_dispatch");
+                defer tracy_compute.End();
+                cs.dispatch(ssbo_renderer.?.ssbo_id, @intCast(entities.count));
+            }
+
+            // SSBO instanced rendering path (16 bytes per entity)
             ssbo_renderer.?.render(&entities, zoom, pan);
         } else if (use_instancing) {
             // GPU instancing path (64 bytes per entity)

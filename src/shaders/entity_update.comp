@@ -1,0 +1,33 @@
+#version 430
+
+layout(local_size_x = 256) in;
+
+struct Entity {
+    float x;
+    float y;
+    int packedVel;  // vx high 16 bits, vy low 16 bits (fixed-point 8.8)
+    uint color;
+};
+
+layout(std430, binding = 0) buffer Entities {
+    Entity entities[];
+};
+
+uniform uint entityCount;
+
+void main() {
+    uint id = gl_GlobalInvocationID.x;
+    if (id >= entityCount) return;
+
+    Entity e = entities[id];
+
+    // unpack velocity (fixed-point 8.8)
+    float vx = float(e.packedVel >> 16) / 256.0;
+    float vy = float((e.packedVel << 16) >> 16) / 256.0;  // sign-extend low 16 bits
+
+    // update position
+    e.x += vx;
+    e.y += vy;
+
+    entities[id] = e;
+}
