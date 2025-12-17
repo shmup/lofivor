@@ -26,7 +26,7 @@ pub const ComputeShader = struct {
     pub fn init() ?ComputeShader {
         // load glMemoryBarrier dynamically
         const barrier_ptr = rl.gl.rlGetProcAddress("glMemoryBarrier");
-        const glMemoryBarrier: GlMemoryBarrierFn = @ptrCast(barrier_ptr);
+        const glMemoryBarrier: GlMemoryBarrierFn = @ptrCast(@alignCast(barrier_ptr));
 
         // compile compute shader
         const shader_id = rl.gl.rlCompileShader(comp_source, rl.gl.rl_compute_shader);
