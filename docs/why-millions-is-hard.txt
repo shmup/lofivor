@@ -1,0 +1,316 @@
+why rendering millions of entities is hard
+=========================================
+
+and what "hard" actually means, from first principles.
+
+
+the simple answer
+-----------------
+
+every frame, your computer does work. work takes time. you have 16.7
+milliseconds to do all the work before the next frame (at 60fps).
+
+if the work takes longer than 16.7ms, you miss the deadline. frames drop.
+the game stutters.
+
+10 million entities means 10 million units of work. whether that fits in
+16.7ms depends on how much work each unit is.
+
+
+what is "work" anyway?
+----------------------
+
+let's trace what happens when you draw one entity:
+
+  1. CPU: "here's an entity at position (340, 512), color cyan"
+  2. that data travels over a bus to the GPU
+  3. GPU: receives the data, stores it in memory
+  4. GPU: runs a vertex shader (figures out where on screen)
+  5. GPU: runs a fragment shader (figures out what color each pixel is)
+  6. GPU: writes pixels to the framebuffer
+  7. framebuffer gets sent to your monitor
+
+each step has a speed limit. the slowest step is your bottleneck.
+
+
+the bottlenecks, explained simply
+---------------------------------
+
+MEMORY BANDWIDTH
+  how fast data can move around. measured in GB/s.
+
+  think of it like a highway. you can have a fast car (processor), but
+  if the highway is jammed, you're stuck in traffic.
+
+  an integrated GPU (like Intel HD 530) shares the highway with the CPU.
+  a discrete GPU (like an RTX card) has its own private highway.
+
+  this is why lofivor's SSBO optimization helped so much: shrinking
+  entity data from 64 bytes to 12 bytes means 5x less traffic.
+
+DRAW CALLS
+  every time you say "GPU, draw this thing", there's overhead.
+  the CPU and GPU have to synchronize, state gets set up, etc.
+
+  1 draw call for 1 million entities: fast
+  1 million draw calls for 1 million entities: slow
+
+  this is why batching matters. not the drawing itself, but the
+  *coordination* of drawing.
+
+FILL RATE
+  how many pixels the GPU can color per second.
+
+  a 4x4 pixel entity = 16 pixels
+  1 million entities = 16 million pixels minimum
+
+  but your screen is only ~2 million pixels (1920x1080). so entities
+  overlap. "overdraw" means coloring the same pixel multiple times.
+
+  10 million overlapping entities might touch each pixel 50+ times.
+  that's 100 million pixel operations.
+
+SHADER COMPLEXITY
+  the GPU runs a tiny program for each vertex and each pixel.
+
+  simple: "put it here, color it this" = fast
+  complex: "calculate lighting from 8 sources, sample 4 textures,
+           apply normal mapping, do fresnel..." = slow
+
+  lofivor's shaders are trivial. AAA game shaders are not.
+
+CPU-GPU SYNCHRONIZATION
+  the CPU and GPU work in parallel, but sometimes they have to wait
+  for each other.
+
+  if the CPU needs to read GPU results, it stalls.
+  if the GPU needs new data and the CPU is busy, it stalls.
+
+  good code keeps them both busy without waiting.
+
+
+why "real games" hit CPU walls
+------------------------------
+
+rendering is just putting colors on pixels. that's the GPU's job.
+
+but games aren't just rendering. they're also:
+
+  - COLLISION DETECTION
+    does entity A overlap entity B?
+
+    naive approach: check every pair
+    1,000 entities = 500,000 checks (n squared / 2)
+    10,000 entities = 50,000,000 checks
+    1,000,000 entities = 500,000,000,000,000 checks
+
+    that's 500 trillion. per frame. not happening.
+
+    smart approach: spatial partitioning (grids, quadtrees)
+    only check nearby entities. but still, at millions of entities,
+    even "nearby" is a lot.
+
+  - AI / BEHAVIOR
+    each entity decides what to do.
+
+    simple: move toward player. cheap.
+    complex: pathfind around obstacles, consider threats, coordinate
+             with allies, remember state. expensive.
+
+    lofivor entities just drift in a direction. no decisions.
+    a real game enemy makes decisions every frame.
+
+  - PHYSICS
+    entities push each other, bounce, have mass and friction.
+    every interaction is math. lots of entities = lots of math.
+
+  - GAME LOGIC
+    damage calculations, spawning, leveling, cooldowns, buffs...
+    all of this runs on the CPU, every frame.
+
+so: lofivor can render 700k entities because they don't DO anything.
+a game with 700k entities that think, collide, and interact would
+need god-tier optimization or would simply not run.
+
+
+what makes AAA games slow on old hardware?
+------------------------------------------
+
+it's not entity count. most AAA games have maybe hundreds of
+"entities" on screen. it's everything else:
+
+  TEXTURE RESOLUTION
+    a 4K texture is 67 million pixels of data. per texture.
+    one character might have 10+ textures (diffuse, normal, specular,
+    roughness, ambient occlusion...).
+
+    old hardware: less VRAM, slower texture sampling.
+
+  SHADER COMPLEXITY
+    modern materials simulate light physics. subsurface scattering,
+    global illumination, ray-traced reflections.
+
+    each pixel might do hundreds of math operations.
+
+  POST-PROCESSING
+    bloom, motion blur, depth of field, ambient occlusion, anti-aliasing.
+    full-screen passes that touch every pixel multiple times.
+
+  MESH COMPLEXITY
+    a character might be 100,000 triangles.
+    10 characters = 1 million triangles.
+    each triangle goes through the vertex shader.
+
+  SHADOWS
+    render the scene again from the light's perspective.
+    for each light. every frame.
+
+AAA games are doing 100x more work per pixel than lofivor.
+lofivor is doing 100x more pixels than AAA games.
+
+different problems.
+
+
+the "abuse" vs "respect" distinction
+------------------------------------
+
+abuse: making the hardware do unnecessary work.
+respect: achieving your goal with minimal waste.
+
+examples of abuse (that lofivor fixed):
+
+  - sending 64 bytes (a full matrix) when you need 12 bytes (x, y, color)
+  - one draw call per entity when you could batch
+  - calculating transforms on CPU when GPU could do it
+  - clearing the screen twice
+  - uploading the same data every frame
+
+examples of abuse in the wild:
+
+  - electron apps using a whole browser to show a chat window
+  - games that re-render static UI every frame
+  - loading 4K textures for objects that appear 20 pixels tall
+  - running AI pathfinding for off-screen entities
+
+the hardware has limits. respecting them means fitting your game
+within those limits through smart decisions. abusing them means
+throwing cycles at problems you created yourself.
+
+
+so can you do 1 million entities with juice on old hardware?
+------------------------------------------------------------
+
+yes, with the right decisions.
+
+what "juice" typically means:
+  - screen shake (free, just offset the camera)
+  - particle effects (separate system, heavily optimized)
+  - flash/hit feedback (change a color value)
+  - sound (different system entirely)
+
+particles are special: they're designed for millions of tiny things.
+they don't collide, don't think, often don't even persist (spawn,
+drift, fade, die). GPU particle systems are essentially what lofivor
+became: minimal data, instanced rendering.
+
+what would kill you at 1 million:
+  - per-entity collision
+  - per-entity AI
+  - per-entity sprite variety (texture switches)
+  - per-entity complex shaders
+
+what you could do:
+  - 1 million particles (visual only, no logic)
+  - 10,000 enemies with collision/AI + 990,000 particles
+  - 100,000 enemies with simple behavior + spatial hash collision
+
+the secret: most of what looks like "millions of things" in games
+is actually a small number of meaningful entities + a large number
+of dumb particles.
+
+
+the laws of physics (sort of)
+-----------------------------
+
+there are hard limits:
+
+  MEMORY BUS BANDWIDTH
+    a DDR4 system might move 25 GB/s.
+    1 million entities at 12 bytes each = 12 MB.
+    at 60fps = 720 MB/s just for entity data.
+    that's only 3% of bandwidth. plenty of room.
+
+    but a naive approach (64 bytes, plus overhead) could be
+    10x worse. suddenly you're at 30%.
+
+  CLOCK CYCLES
+    a 3GHz CPU does 3 billion operations per second.
+    at 60fps, that's 50 million operations per frame.
+    1 million entities = 50 operations each.
+
+    50 operations is: a few multiplies, some loads/stores, a branch.
+    that's barely enough for "move in a direction".
+    pathfinding? AI? collision? not a chance.
+
+  PARALLELISM
+    GPUs have thousands of cores but they're simple.
+    CPUs have few cores but they're smart.
+
+    entity rendering: perfectly parallel (GPU wins)
+    entity decision-making: often sequential (CPU bound)
+
+so yes, physics constrains us. but "physics" here means:
+  - how fast electrons move through silicon
+  - how much data fits on a wire
+  - how many transistors fit on a chip
+
+within those limits, there's room. lots of room, if you're clever.
+lofivor went from 5k to 700k by being clever, not by breaking physics.
+
+
+the actual lesson
+-----------------
+
+the limit isn't really "the hardware can't do it."
+
+the limit is "the hardware can't do it THE WAY YOU'RE DOING IT."
+
+every optimization in lofivor was finding a different way:
+  - don't draw circles, blit textures
+  - don't call functions, submit vertices directly
+  - don't send matrices, send packed structs
+  - don't update on CPU, use compute shaders
+
+the hardware was always capable of 700k. the code wasn't asking right.
+
+this is true at every level. that old laptop struggling with 10k
+entities in some game? probably not the laptop's fault. probably
+the game is doing something wasteful that doesn't need to be.
+
+"runs poorly on old hardware" often means "we didn't try to make
+it run on old hardware" not "it's impossible on old hardware."
+
+
+closing thought
+---------------
+
+10 million is a lot. but 1 million? 2 million?
+
+with discipline: yes.
+with decisions that respect the hardware: yes.
+with awareness of what's actually expensive: yes.
+
+the knowledge of what's expensive is the key.
+
+most developers don't have it. they use high-level abstractions
+that hide the cost. they've never seen a frame budget or a
+bandwidth calculation.
+
+lofivor is a learning tool. the journey from 5k to 700k teaches
+where the costs are. once you see them, you can't unsee them.
+
+you start asking: "what is this actually doing? what does it cost?
+is there a cheaper way?"
+
+that's the skill. not the specific techniques—those change with
+hardware. the skill is asking the questions.
