@@ -22,11 +22,13 @@ pub const SsboRenderer = struct {
     circle_texture_loc: i32,
     zoom_loc: i32,
     pan_loc: i32,
+    opaque_mode_loc: i32,
     circle_texture_id: u32,
     gpu_buffer: []sandbox.GpuEntity,
     last_entity_count: usize, // track count to detect when entities are added
 
     const QUAD_SIZE: f32 = 16.0;
+    const OPAQUE_ZOOM_THRESHOLD: f32 = 2.0; // switch to opaque mode above this zoom
 
     // quad vertices: position (x, y) and texcoord (u, v)
     // centered at origin, size 1x1
@@ -59,6 +61,7 @@ pub const SsboRenderer = struct {
         const circle_texture_loc = rl.gl.rlGetLocationUniform(shader_id, "circleTexture");
         const zoom_loc = rl.gl.rlGetLocationUniform(shader_id, "zoom");
         const pan_loc = rl.gl.rlGetLocationUniform(shader_id, "pan");
+        const opaque_mode_loc = rl.gl.rlGetLocationUniform(shader_id, "opaqueMode");
 
         if (screen_size_loc < 0) {
             std.debug.print("ssbo: warning - screenSize uniform not found\n", .{});
@@ -124,6 +127,7 @@ pub const SsboRenderer = struct {
             .circle_texture_loc = circle_texture_loc,
             .zoom_loc = zoom_loc,
             .pan_loc = pan_loc,
+            .opaque_mode_loc = opaque_mode_loc,
             .circle_texture_id = circle_texture.id,
             .gpu_buffer = gpu_buffer,
             .last_entity_count = 0,
@@ -226,6 +230,10 @@ pub const SsboRenderer = struct {
         const pan_arr = [2]f32{ pan[0], pan[1] };
         rl.gl.rlSetUniform(self.pan_loc, &pan_arr, @intFromEnum(rl.gl.rlShaderUniformDataType.rl_shader_uniform_vec2), 1);
 
+        // opaque mode when zoomed in to reduce overdraw
+        const opaque_mode: i32 = if (zoom >= OPAQUE_ZOOM_THRESHOLD) 1 else 0;
+        rl.gl.rlSetUniform(self.opaque_mode_loc, &opaque_mode, @intFromEnum(rl.gl.rlShaderUniformDataType.rl_shader_uniform_int), 1);
+
         // bind texture
         rl.gl.rlActiveTextureSlot(0);
         rl.gl.rlEnableTexture(self.circle_texture_id);
@@ -236,9 +244,13 @@ pub const SsboRenderer = struct {
         // bind SSBO to binding point 0
         rl.gl.rlBindShaderBuffer(self.ssbo_id, 0);
 
-        // enable blending for transparency
-        rl.gl.rlEnableColorBlend();
-        rl.gl.rlSetBlendMode(@intFromEnum(rl.gl.rlBlendMode.rl_blend_alpha));
+        // blending: disable when opaque for early-Z benefits
+        if (opaque_mode == 1) {
+            rl.gl.rlDisableColorBlend();
+        } else {
+            rl.gl.rlEnableColorBlend();
+            rl.gl.rlSetBlendMode(@intFromEnum(rl.gl.rlBlendMode.rl_blend_alpha));
+        }
 
         // bind VAO and draw
         {
@@ -254,6 +266,10 @@ pub const SsboRenderer = struct {
         rl.gl.rlDisableVertexBuffer();
         rl.gl.rlBindShaderBuffer(0, 0); // unbind SSBO
         rl.gl.rlDisableTexture();
+
+        // restore blending for UI rendering
+        rl.gl.rlEnableColorBlend();
+        rl.gl.rlSetBlendMode(@intFromEnum(rl.gl.rlBlendMode.rl_blend_alpha));
 
         // re-enable raylib's default shader
         rl.gl.rlEnableShader(rl.gl.rlGetShaderIdDefault());
