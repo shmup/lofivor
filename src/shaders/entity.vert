@@ -28,6 +28,20 @@ void main() {
     // get entity data from SSBO
     Entity e = entities[gl_InstanceID];
 
+    // frustum culling - discard entities outside visible area
+    float margin = 16.0;
+    float viewLeft   = pan.x - margin;
+    float viewRight  = pan.x + (screenSize.x / zoom) + margin;
+    float viewTop    = pan.y - margin;
+    float viewBottom = pan.y + (screenSize.y / zoom) + margin;
+
+    if (e.x < viewLeft || e.x > viewRight || e.y < viewTop || e.y > viewBottom) {
+        gl_Position = vec4(0.0, 0.0, -2.0, 1.0);
+        fragTexCoord = vec2(0.0);
+        fragColor = vec3(0.0);
+        return;
+    }
+
     // apply pan offset and zoom to convert to NDC
     // pan is in screen pixels, zoom scales the view
     float ndcX = ((e.x - pan.x) * zoom / screenSize.x) * 2.0 - 1.0;
