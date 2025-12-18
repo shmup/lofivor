@@ -70,13 +70,16 @@ findings (i5-6500T / HD 530):
 - rlgl batching is already near-optimal for this hardware
 - compute shaders: update time ~5ms → ~0ms at 150k entities (CPU freed entirely)
 
-## future optimization concepts
+## future optimization concepts (GPU-focused)
 
-- [ ] SIMD entity updates (AVX2/SSE)
-- [ ] struct-of-arrays vs array-of-structs benchmark
-- [ ] multithreaded update loop (thread pool)
-- [ ] cache-friendly memory layouts
-- [ ] LOD rendering (skip distant entities or reduce detail)
-- [ ] frustum culling (only render visible)
-- [ ] temporal techniques (update subset per frame)
-- [ ] fixed-point vs floating-point math
+- [ ] GPU-side frustum culling in compute shader
+- [ ] point sprites for distant/small entities (4 verts → 1)
+- [ ] indirect draw calls (glDrawArraysIndirect)
+
+## future optimization concepts (CPU - not currently bottleneck)
+
+- [ ] SIMD / SoA / multithreading (if game logic makes CPU hot again)
+
+## other ideas that aren't about optimization
+
+- [ ] scanline shader

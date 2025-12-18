@@ -82,8 +82,8 @@ these target the rendering bottleneck since update loop is already fast.
 
 | technique              | description                                                          | expected gain                   |
 | ---------------------- | -------------------------------------------------------------------- | ------------------------------- |
-| ~~SSBO instance data~~ | ~~pack (x, y, color) = 12 bytes instead of 64-byte matrices~~        | **done** - see optimization 5   |
-| compute shader updates | move entity positions to GPU entirely, avoid CPU→GPU sync            | significant                     |
+| SSBO instance data     | pack (x, y, color) = 12 bytes instead of 64-byte matrices            | done - see optimization 5       |
+| compute shader updates | move entity positions to GPU entirely, avoid CPU→GPU sync            | done - see optimization 6       |
 | OpenGL vs Vulkan       | test raylib's Vulkan backend                                         | unknown                         |
 | discrete GPU testing   | test on dedicated GPU where instancing/SSBO shine                    | significant (different hw)      |
 
@@ -125,6 +125,33 @@ currently not the bottleneck - update stays <1ms at 100k. these become relevant 
 | cache-friendly layout | hot data together, cold data separate | reduces cache misses        |
 | entity pools          | pre-allocated, reusable entity slots  | reduces allocation overhead |
 | component packing     | minimize struct padding               | better cache utilization    |
+
+#### estimated gains summary
+
+| Optimization           | Expected Gain | Why                                               |
+|------------------------|---------------|---------------------------------------------------|
+| SIMD updates           | 0%            | Update already on GPU                             |
+| Multithreaded update   | 0%            | Update already on GPU                             |
+| Cache-friendly layouts | 0%            | CPU doesn't iterate entities                      |
+| Fixed-point math       | 0% or worse   | GPUs are optimized for float                      |
+| SoA vs AoS             | ~5%           | Only helps data upload, not bottleneck            |
+| Frustum culling        | 5-15%         | Most entities converge to center anyway           |
+| LOD rendering          | 20-40%        | Real gains - fewer fragments for distant entities |
+| Temporal techniques    | ~50%          | But with visual artifacts (flickering)            |
+
+Realistic total if you did everything: ~30-50% improvement
+
+That'd take you from ~1.4M @ 38fps to maybe ~1.8-2M @ 38fps, or ~1.4M @ 50-55fps.
+
+What would actually move the needle:
+- GPU-side frustum culling in compute shader (cull before render, not after)
+- Point sprites instead of quads for distant entities (4 vertices → 1)
+- Indirect draw calls (GPU decides what to render, CPU never touches entity data)
+
+Your real bottleneck is fill rate and vertex throughput on HD 530 integrated
+graphics. The CPU side is already essentially free.
+
+
 
 ---
 
