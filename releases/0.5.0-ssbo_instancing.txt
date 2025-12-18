@@ -1,0 +1,17 @@
+ssbo breakthrough: 5x gain by shrinking the data
+
+- pack entity data (x, y, color) into 12-byte struct
+- upload via shader storage buffer object (SSBO)
+- ~700k entities at 60fps (i5-6500T / HD 530)
+- ~950k entities at ~57fps
+- 5x improvement over previous best
+- 140x total from baseline
+- why it works:
+  - 12 bytes vs 64 bytes (matrices) = 5.3x less bandwidth
+  - 12 bytes vs 80 bytes (rlgl vertices) = 6.7x less bandwidth
+  - no CPU-side matrix calculations
+  - GPU does NDC conversion and color unpacking
+- custom vertex/fragment shaders
+- single rlDrawVertexArrayInstanced() call for all entities
+- shaders embedded at build time
+- removed FPS cap, added optional vsync arg

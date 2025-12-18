@@ -1,0 +1,11 @@
+compute shader: moving physics to the GPU
+
+- entity position updates now run on GPU via compute shader
+- GPU-based RNG for entity velocity randomization
+- full simulation loop stays on GPU, no CPU roundtrip
+- new compute.zig module for shader management
+- GpuEntity struct with position, velocity, and color
+- tracy profiling integration
+- FPS display turns green (good) or red (bad)
+- added design docs for zoom/pan and compute shader work
+- cross-platform alignment fixes for shader data

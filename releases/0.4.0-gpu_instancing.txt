@@ -1,0 +1,13 @@
+gpu instancing: a disappointing discovery
+
+- drawMeshInstanced() with per-entity transform matrices
+- ~150k entities at 60fps - barely better than rlgl batching
+- negligible improvement on integrated graphics
+- why it didn't help:
+  - integrated GPU shares system RAM (no PCIe transfer savings)
+  - 64-byte matrix per entity vs ~80 bytes for rlgl vertices
+  - bottleneck is memory bandwidth, not draw call overhead
+  - rlgl batching already minimizes draw calls effectively
+- orthographic camera setup for 2D-like rendering
+- heap-allocated transforms buffer (64MB too big for stack)
+- lesson learned: not all "advanced" techniques are wins

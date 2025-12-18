@@ -1,0 +1,5 @@
+cross-platform release: adding windows to the party
+
+- updated github release workflow
+- builds for both linux and windows now
+- no code changes, just CI/CD work

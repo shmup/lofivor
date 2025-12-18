@@ -1,0 +1,10 @@
+zoom and pan: making millions of entities explorable
+
+- mouse wheel zoom
+- click and drag panning
+- orthographic camera transforms
+- memory panel showing entity buffer sizes
+- background draws immediately (no flicker)
+- tab key toggles UI panels
+- explained "lofivor" name in README (lo-fi survivor)
+- shader updated for zoom/pan transforms

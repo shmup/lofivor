@@ -1,0 +1,8 @@
+the baseline: one draw call per entity, pure and simple
+
+- individual rl.drawCircle() calls in a loop
+- ~5k entities at 60fps before frame times tank
+- linear scaling: 10k = ~43ms, 20k = ~77ms
+- render-bound (update loop stays under 1ms even at 30k)
+- each circle is its own GPU draw call
+- the starting point for optimization experiments

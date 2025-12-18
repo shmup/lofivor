@@ -1,0 +1,8 @@
+pre-render once, blit many: 10x improvement
+
+- render circle to 16x16 texture at startup
+- drawTexture() per entity instead of drawCircle()
+- raylib batches same-texture draws internally
+- ~50k entities at 60fps
+- simple change, big win
+- still one function call per entity, but GPU work is batched

@@ -1,0 +1,5 @@
+quick exit: zoom out then quit
+
+- q key first zooms out, second press quits
+- nice way to see the full entity field before closing
+- minor UI text fix

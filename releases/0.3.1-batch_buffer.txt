@@ -1,0 +1,11 @@
+bigger buffer, fewer flushes: squeezing out more headroom
+
+- increased raylib batch buffer from 8192 to 32768 vertices
+- ~140k entities at 60fps on i5-6500T
+- ~40% improvement over default buffer
+- fewer GPU flushes per frame
+- also added: release workflows for github and forgejo
+- added OPTIMIZATIONS.md documenting the journey
+- added README, UI panel with FPS display
+- heap allocated entity array to support 1 million entities
+- per-entity RGB colors
