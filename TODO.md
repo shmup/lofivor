@@ -72,7 +72,7 @@ findings (i5-6500T / HD 530):
 
 ## future optimization concepts (GPU-focused)
 
-- [ ] GPU-side frustum culling in compute shader
+- [x] GPU-side frustum culling in compute shader (vertex shader impl - helps zoomed out, hurts zoomed in due to overdraw)
 - [ ] point sprites for distant/small entities (4 verts → 1)
 - [ ] indirect draw calls (glDrawArraysIndirect)
 

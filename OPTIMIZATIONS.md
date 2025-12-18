@@ -136,6 +136,10 @@ currently not the bottleneck - update stays <1ms at 100k. these become relevant 
 | Fixed-point math       | 0% or worse   | GPUs are optimized for float                      |
 | SoA vs AoS             | ~5%           | Only helps data upload, not bottleneck            |
 | Frustum culling        | 5-15%         | Most entities converge to center anyway           |
+| └─ caveat              | worse zoomed  | Culls entities but survivors are 100x larger pixels + overdraw |
+| └─ fix: cap quad size  | untested      | Don't let quads grow past N pixels when zoomed    |
+| └─ fix: skip near center | untested    | Entities about to respawn anyway, skip render     |
+| └─ fix: opaque fallback | untested     | Disable alpha blend when zoomed to avoid overdraw |
 | LOD rendering          | 20-40%        | Real gains - fewer fragments for distant entities |
 | Temporal techniques    | ~50%          | But with visual artifacts (flickering)            |
 
