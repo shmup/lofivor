@@ -139,7 +139,63 @@ currently not the bottleneck - update stays <1ms at 100k. these become relevant 
 | └─ caveat              | worse zoomed  | Culls entities but survivors are 100x larger pixels + overdraw |
 | └─ fix: cap quad size  | untested      | Don't let quads grow past N pixels when zoomed    |
 | └─ fix: skip near center | untested    | Entities about to respawn anyway, skip render     |
-| └─ fix: opaque fallback | untested     | Disable alpha blend when zoomed to avoid overdraw |
+| └─ fix: opaque fallback | tested       | See frustum_culling branch notes below            |
+
+---
+
+### frustum_culling branch experiments
+
+testing at 1M entities, comparing 1x zoom vs 10x zoom
+
+#### baseline (main branch, no frustum culling)
+- 1x zoom: ~56 FPS (18ms)
+- 10x zoom: not tested on main
+
+#### vertex shader frustum culling
+- technique: discard off-screen entities by setting `gl_Position.z = -2.0`
+- 1x zoom: 56 FPS (18ms) - no change, all entities visible anyway
+- 10x zoom: 10 FPS (101ms) - **worse than expected**
+- why it hurts zoomed in:
+  - culling works (only ~1% of entities rendered)
+  - but survivors are 10x larger = 100x more pixels per entity
+  - massive overdraw from overlapping alpha-blended circles
+
+#### attempt 1: alpha-test with discard
+- technique: `if (alpha < 0.5) discard;` + disable blending
+- 10x zoom: 9 FPS (107ms) - **slightly worse**
+- why it failed:
+  - `discard` defeats early-Z optimization
+  - GPU must run fragment shader to know what to discard
+  - no fragments skipped before shading
+
+#### attempt 2: solid squares (no texture, no discard)
+- technique: skip texture lookup entirely, output solid color
+- 10x zoom: 14 FPS (70ms) - **~30% better**
+- why it helped somewhat:
+  - no discard = early-Z can work
+  - no texture fetch = simpler shader
+- why it's still slow:
+  - still rasterizing massive overlapping quads
+  - early-Z helps but doesn't eliminate all overdraw
+  - fill rate limited on HD 530
+
+#### remaining ideas to try
+| idea | expected | notes |
+|------|----------|-------|
+| cap quad size | moderate | clamp max pixels, entities stop growing past Nx zoom |
+| back-to-front sort | high | proper early-Z, but CPU sorting cost |
+| depth pre-pass | high | 2 passes: depth-only then color, complex |
+| point sprites | high | 1 vertex instead of 6, needs GL_POINTS |
+| reduce entity density | high | fewer entities when zoomed = less overdraw |
+| skip center entities | low | center is sparse anyway (black hole) |
+
+#### current thinking
+the core problem is **fill rate** - at 10x zoom we're trying to shade billions of pixels.
+frustum culling reduces entity count but increases per-entity cost.
+real fix probably needs to limit total pixels shaded, not just entity count.
+
+---
+
 | LOD rendering          | 20-40%        | Real gains - fewer fragments for distant entities |
 | Temporal techniques    | ~50%          | But with visual artifacts (flickering)            |
 
