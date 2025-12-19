@@ -1,0 +1,201 @@
+rops: render output units
+=========================
+
+what they are, where they came from, and what yours can do.
+
+
+what is a rop?
+--------------
+
+ROP = Render Output Unit (originally "Raster Operations Pipeline")
+
+it's the final stage of the GPU pipeline. after all the fancy shader
+math is done, the ROP is the unit that actually writes pixels to memory.
+
+think of it as the bottleneck between "calculated" and "visible."
+
+a ROP does:
+  - depth testing (is this pixel in front of what's already there?)
+  - stencil testing (mask operations)
+  - blending (alpha, additive, etc)
+  - anti-aliasing resolve
+  - writing the final color to the framebuffer
+
+one ROP can write one pixel per clock cycle (roughly).
+
+
+the first rop
+-------------
+
+the term comes from the IBM 8514/A (1987), which had dedicated hardware
+for "raster operations" - bitwise operations on pixels (AND, OR, XOR).
+this was revolutionary because before this, the CPU did all pixel math.
+
+but the modern ROP as we know it emerged with:
+
+  NVIDIA NV1 (1995)
+    one of the first chips with dedicated pixel output hardware
+    could do ~1 million textured pixels/second
+
+  3dfx Voodoo (1996)
+    the card that defined the modern GPU pipeline
+    had 1 TMU + 1 pixel pipeline (essentially 1 ROP)
+    could push 45 million pixels/second
+    that ONE pipeline ran Quake at 640x480
+
+  NVIDIA GeForce 256 (1999)
+    "the first GPU" - named itself with that term
+    4 pixel pipelines = 4 ROPs
+    480 million pixels/second
+
+so the original consumer 3D cards had... 1 ROP. and they ran Quake.
+
+
+what one rop can do
+-------------------
+
+let's do the math.
+
+one ROP at 100 MHz (3dfx Voodoo era):
+  100 million cycles/second
+  ~1 pixel per cycle
+  = 100 megapixels/second
+
+at 640x480 @ 60fps:
+  640 * 480 * 60 = 18.4 megapixels/second needed
+
+so ONE ROP at 100MHz could handle 640x480 with ~5x headroom for overdraw.
+
+at 1024x768 @ 60fps:
+  1024 * 768 * 60 = 47 megapixels/second
+
+now you're at 2x overdraw max. still playable, but tight.
+
+
+one modern rop
+--------------
+
+a single modern ROP runs at ~1-2 GHz and can do more per cycle:
+  - multiple color outputs (MRT)
+  - 64-bit or 128-bit color formats
+  - compressed writes
+
+rough estimate for one ROP at 1.5 GHz:
+  ~1.5 billion pixels/second base throughput
+
+at 1920x1080 @ 60fps:
+  1920 * 1080 * 60 = 124 megapixels/second
+
+one ROP could handle 1080p with 12x overdraw headroom.
+
+at 4K @ 60fps:
+  3840 * 2160 * 60 = 497 megapixels/second
+
+one ROP could handle 4K with 3x overdraw. tight, but possible.
+
+
+your three rops (intel hd 530)
+------------------------------
+
+HD 530 specs:
+  - 3 ROPs
+  - ~950 MHz boost clock
+  - theoretical: 2.85 GPixels/second
+
+let's break that down:
+
+at 1080p @ 60fps (124 MP/s needed):
+  2850 / 124 = 23x overdraw budget
+
+that's actually generous! you could draw each pixel 23 times.
+
+so why does lofivor struggle at 1M entities?
+
+because 1M entities at 4x4 pixels = 16M pixels minimum.
+but with overlap? let's say average 10x overdraw:
+  160M pixels/frame
+  at 60fps = 9.6 billion pixels/second
+
+your ceiling is 2.85 billion.
+
+so you're 3.4x over budget. that's why you top out around 300k-400k
+before frame drops (which matches empirical testing).
+
+
+the real constraint
+-------------------
+
+ROPs don't work in isolation. they're limited by:
+
+  1. MEMORY BANDWIDTH
+     each pixel write = memory access
+     HD 530 shares DDR4 with CPU (~30 GB/s)
+     at 32-bit color: 30GB/s / 4 bytes = 7.5 billion pixels/second max
+     but you're competing with CPU, texture reads, etc.
+     realistic: maybe 2-3 billion pixels for framebuffer writes
+
+  2. TEXTURE SAMPLING
+     if fragment shader samples textures, TMUs must keep up
+     HD 530 has 24 TMUs, so this isn't the bottleneck
+
+  3. SHADER EXECUTION
+     ROPs wait for fragments to be shaded
+     if shaders are slow, ROPs starve
+     lofivor's shaders are trivial, so this isn't the bottleneck
+
+for lofivor specifically: your 3 ROPs are THE ceiling.
+
+
+what could you do with more rops?
+---------------------------------
+
+comparison:
+
+  Intel HD 530:     3 ROPs,  2.85 GPixels/s
+  GTX 1060:        48 ROPs,  72 GPixels/s
+  RTX 3080:        96 ROPs, 164 GPixels/s
+  RTX 4090:       176 ROPs, 443 GPixels/s
+
+with a GTX 1060 (25x your fill rate):
+  lofivor could probably hit 5-10 million entities
+
+with an RTX 4090 (155x your fill rate):
+  tens of millions, limited by other factors
+
+
+perspective: what 3 rops means historically
+-------------------------------------------
+
+your HD 530 has roughly the fill rate of:
+  - GeForce 4 Ti 4600 (2002): 4 ROPs, 1.2 GPixels/s
+  - Radeon 9700 Pro (2002): 8 ROPs, 2.6 GPixels/s
+
+you're running hardware that, in raw pixel output, matches GPUs from
+20+ years ago. but with modern features (compute shaders, SSBO, etc).
+
+this is why lofivor is interesting: you're achieving 700k+ entities
+on fill-rate-equivalent hardware that originally ran games with
+maybe 10,000 triangles on screen.
+
+the difference is technique. those 2002 games did complex per-pixel
+lighting, shadows, multiple texture passes. lofivor does one texture
+sample and one blend. same fill rate, 100x the entities.
+
+
+the lesson
+----------
+
+ROPs are simple: they write pixels.
+
+the number you have determines your pixel budget.
+everything else (shaders, vertices, CPU logic) only matters if
+the ROPs aren't your bottleneck.
+
+with 3 ROPs, you have roughly 2.85 billion pixels/second.
+spend them wisely:
+  - cull what's offscreen (don't spend pixels on invisible things)
+  - shrink distant objects (LOD saves pixels)
+  - reduce overlap (spatial organization)
+  - keep shaders simple (don't starve the ROPs)
+
+your 3 ROPs can do remarkable things. Quake ran on 1.

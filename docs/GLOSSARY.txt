@@ -1,0 +1,292 @@
+lofivor glossary
+================
+
+terms that come up when optimizing graphics.
+
+
+clock cycle
+-----------
+
+one "tick" of the processor's internal clock.
+
+a CPU or GPU has a crystal oscillator that vibrates at a fixed rate.
+each vibration = one cycle. the processor does some work each cycle.
+
+  1 GHz = 1 billion cycles per second
+  1 MHz = 1 million cycles per second
+
+so a 1 GHz processor has 1 billion opportunities to do work per second.
+
+"one operation per cycle" is idealized. real work often takes multiple
+cycles (memory access: 100+ cycles, division: 10-20 cycles, add: 1 cycle).
+
+your HD 530 runs at ~950 MHz, so roughly 950 million cycles per second.
+at 60fps, that's about 15.8 million cycles per frame.
+
+
+fill rate
+---------
+
+pixels written per second. measured in megapixels/s or gigapixels/s.
+
+  fill rate = ROPs * clock speed * pixels per clock
+
+your HD 530: 3 ROPs * 950 MHz * 1 = 2.85 GPixels/s theoretical max.
+
+
+overdraw
+--------
+
+drawing the same pixel multiple times per frame.
+
+if two entities overlap, the back one gets drawn, then the front one
+overwrites it. the back one's work was wasted.
+
+  overdraw ratio = total pixels drawn / screen pixels
+
+1080p = 2.07M pixels. if you draw 20M pixels, overdraw = ~10x.
+
+
+bandwidth
+---------
+
+data transfer rate. measured in bytes/second (GB/s, MB/s).
+
+memory bandwidth = how fast data moves between processor and RAM.
+
+your HD 530 shares DDR4 with the CPU: ~30 GB/s total.
+a discrete GPU has dedicated VRAM: 200-900 GB/s.
+
+
+latency
+-------
+
+time delay. measured in nanoseconds (ns) or cycles.
+
+memory latency = time to fetch data from RAM.
+  - L1 cache: ~4 cycles
+  - L2 cache: ~12 cycles
+  - L3 cache: ~40 cycles
+  - main RAM: ~200 cycles
+
+this is why cache matters. a cache miss = 50x slower than a hit.
+
+
+throughput vs latency
+---------------------
+
+latency = how long ONE thing takes.
+throughput = how many things per second.
+
+a pipeline can have high latency but high throughput.
+
+example: a car wash takes 10 minutes (latency).
+but if cars enter every 1 minute, throughput is 60 cars/hour.
+
+GPUs hide latency with throughput. one thread waits for memory?
+switch to another thread. thousands of threads keep the GPU busy.
+
+
+draw call
+---------
+
+one command from CPU to GPU: "draw this batch of geometry."
+
+each draw call has overhead:
+  - CPU prepares command buffer
+  - driver validates state
+  - GPU switches context
+
+1 draw call for 1M triangles: fast.
+1M draw calls for 1M triangles: slow.
+
+lofivor uses 1 draw call for all entities (instanced rendering).
+
+
+instancing
+----------
+
+drawing many copies of the same geometry in one draw call.
+
+instead of: draw triangle, draw triangle, draw triangle...
+you say: draw this triangle 1 million times, here are the positions.
+
+the GPU handles the replication. massively more efficient.
+
+
+shader
+------
+
+a small program that runs on the GPU.
+
+the name is historical - early shaders calculated shading/lighting.
+but today: a shader is just software running on GPU hardware.
+it doesn't have to do with shading at all.
+
+more precisely: a shader turns one piece of data into another piece of data.
+  - vertex shader: positions → screen coordinates
+  - fragment shader: fragments → pixel colors
+  - compute shader: data → data (anything)
+
+GPUs are massively parallel, so shaders run on thousands of inputs at once.
+CPUs have stagnated; GPUs keep getting faster. modern engines like UE5
+increasingly use shaders for work that used to be CPU-only.
+
+
+SSBO (shader storage buffer object)
+-----------------------------------
+
+a block of GPU memory that shaders can read/write.
+
+unlike uniforms (small, read-only), SSBOs can be large and writable.
+lofivor stores all entity data in an SSBO: positions, velocities, colors.
+
+
+compute shader
+--------------
+
+a shader that does general computation, not rendering.
+
+runs on GPU cores but doesn't output pixels. just processes data.
+lofivor uses compute shaders to update entity positions.
+
+because compute exists, shaders can be anything: physics, AI, sorting,
+image processing. the GPU is a general-purpose parallel processor.
+
+
+fragment / pixel shader
+-----------------------
+
+program that runs once per pixel (actually per "fragment").
+
+determines the final color of each pixel. this is where:
+  - texture sampling happens
+  - lighting calculations happen
+  - the expensive math lives
+
+lofivor's fragment shader: sample texture, multiply by color. trivial.
+AAA game fragment shader: 500+ instructions. expensive.
+
+
+vertex shader
+-------------
+
+program that runs once per vertex.
+
+transforms 3D positions to screen positions. lofivor's vertex shader
+reads from SSBO and positions the quad corners.
+
+
+ROP (render output unit)
+------------------------
+
+final stage of GPU pipeline. writes pixels to framebuffer.
+
+handles: depth test, stencil test, blending, antialiasing.
+your bottleneck on HD 530. see docs/rops.txt.
+
+
+TMU (texture mapping unit)
+--------------------------
+
+samples textures. reads pixel colors from texture memory.
+
+your HD 530 has 24 TMUs. they're fast (22.8 GTexels/s).
+texture sampling is cheap relative to ROPs on this hardware.
+
+
+EU (execution unit)
+-------------------
+
+intel's term for shader cores.
+
+your HD 530 has 24 EUs, each with 8 ALUs = 192 ALUs total.
+these run your vertex, fragment, and compute shaders.
+
+
+ALU (arithmetic logic unit)
+---------------------------
+
+does math. add, multiply, compare, bitwise operations.
+
+one ALU can do one operation per cycle (simple ops).
+complex ops (sqrt, sin, cos) take multiple cycles.
+
+
+framebuffer
+-----------
+
+the image being rendered. lives in GPU memory.
+
+at 1080p with 32-bit color: 1920 * 1080 * 4 = 8.3 MB.
+double-buffered (front + back): 16.6 MB.
+
+
+vsync
+-----
+
+synchronizing frame presentation with monitor refresh.
+
+without vsync: tearing (half old frame, half new frame).
+with vsync: smooth, but if you miss 16.7ms, you wait for next refresh.
+
+
+frame budget
+------------
+
+time available per frame.
+
+  60 fps = 16.67 ms per frame
+  30 fps = 33.33 ms per frame
+
+everything (CPU + GPU) must complete within budget or frames drop.
+
+
+pipeline stall
+--------------
+
+GPU waiting for something. bad for performance.
+
+causes:
+  - waiting for memory (cache miss)
+  - waiting for previous stage to finish
+  - synchronization points (barriers)
+  - `discard` in fragment shader (breaks early-z)
+
+
+early-z
+-------
+
+optimization: test depth BEFORE running fragment shader.
+
+if pixel will be occluded, skip the expensive shader work.
+`discard` breaks this because GPU can't know depth until shader runs.
+
+
+LOD (level of detail)
+---------------------
+
+using simpler geometry/textures for distant objects.
+
+far away = fewer pixels = less detail needed.
+saves vertices, texture bandwidth, and fill rate.
+
+
+frustum culling
+---------------
+
+don't draw what's outside the camera view.
+
+the "frustum" is the pyramid-shaped visible region.
+anything outside = wasted work. cull it before sending to GPU.
+
+
+spatial partitioning
+--------------------
+
+organizing entities by position for fast queries.
+
+types: grid, quadtree, octree, BVH.
+
+"which entities are near point X?" goes from O(n) to O(log n).
+essential for collision detection at scale.
